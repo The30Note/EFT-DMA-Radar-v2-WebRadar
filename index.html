@@ -254,6 +254,13 @@
                 <label><input type="checkbox" id="showExfils" checked> Show Exfils</label><br>
                 <label><input type="checkbox" id="showMostValuableLoot"> Show Most Valuable Loot</label><br>
                 <label><input type="checkbox" id="showPlayerStats"> Show Player Stats</label>
+                <h2>Color Settings</h2>
+                <label>Player Color: <input type="color" id="playerColor" value="#00ff00"></label><br>
+                <label>Scav Color: <input type="color" id="scavColor" value="#ff9900"></label><br>
+                <label>Boss Color: <input type="color" id="bossColor" value="#ff0000"></label><br>
+                <label>Teammate Color: <input type="color" id="teammateColor" value="#0000ff"></label><br>
+                <label>Loot Color: <input type="color" id="lootColor" value="#ffff00"></label><br>
+                <label>Container Color: <input type="color" id="containerColor" value="#8b4513"></label><br>
             </div>
         </div>
     </div>
@@ -650,108 +657,114 @@ canvas.addEventListener('wheel', (e) => {
         }
 
         function drawPlayers() {
-            if (!mapData || !mapData.players) return;
+    if (!mapData || !mapData.players) return;
 
-            const selectedPlayer = mapData.players.find(player => player.ProfileID === selectedPlayerId);
+    const playerColor = document.getElementById('playerColor').value;
+    const scavColor = document.getElementById('scavColor').value;
+    const bossColor = document.getElementById('bossColor').value;
+    const teammateColor = document.getElementById('teammateColor').value;
 
-            const showPlayers = document.getElementById('showPlayers').checked;
-            const showScavs = document.getElementById('showScavs').checked;
-            const showBosses = document.getElementById('showBosses').checked;
-            const showTeammates = document.getElementById('showTeammates').checked;
-            const showDeadBodies = document.getElementById('showDeadBodies').checked;
+    const selectedPlayer = mapData.players.find(player => player.ProfileID === selectedPlayerId);
 
-            let pmcCount = 0;
-            let scavCount = 0;
-            let bossCount = 0;
+    const showPlayers = document.getElementById('showPlayers').checked;
+    const showScavs = document.getElementById('showScavs').checked;
+    const showBosses = document.getElementById('showBosses').checked;
+    const showTeammates = document.getElementById('showTeammates').checked;
+    const showDeadBodies = document.getElementById('showDeadBodies').checked;
 
-            mapData.players.forEach(player => {
-                const isLocalPlayer = player.ProfileID === selectedPlayerId;
-                const isTeammate = player.Type === 'Teammate';
-                const isAlive = player.IsAlive;
-                let shouldDrawPlayer = false;
-                let playerColor = 'yellow';
+    let pmcCount = 0;
+    let scavCount = 0;
+    let bossCount = 0;
 
-                if (isLocalPlayer || isTeammate) {
-                    if (showTeammates) {
-                        shouldDrawPlayer = true;
-                        playerColor = 'green';
-                    }
-                } else if (player.IsPMC) {
-                    if (showPlayers) {
-                        shouldDrawPlayer = true;
-                        playerColor = 'blue';
-                    }
-                    pmcCount++;
-                } else if (isBoss(player.Name)) {
-                    if (showBosses) {
-                        shouldDrawPlayer = true;
-                        playerColor = 'red';
-                    }
-                    bossCount++;
-                } else if (isFollowerOrGuard(player.Name)) {
-                    if (showScavs) {
-                        shouldDrawPlayer = true;
-                        playerColor = 'pink';
-                    }
-                    scavCount++;
-                } else {
-                    if (showScavs) {
-                        shouldDrawPlayer = true;
-                        playerColor = 'orange';
-                    }
-                    scavCount++;
-                }
+    mapData.players.forEach(player => {
+        const isLocalPlayer = player.ProfileID === selectedPlayerId;
+        const isTeammate = player.Type === 'Teammate';
+        const isAlive = player.IsAlive;
+        let shouldDrawPlayer = false;
+        let currentPlayerColor = scavColor; // Default to scav color
 
-                if (shouldDrawPlayer) {
-                    const coords = convertPositionToMapCoords(player.Position);
-                    if (coords) {
-                        if (isAlive) {
-                            ctx.beginPath();
-                            ctx.arc(coords.x, coords.y, 8 / zoom, 0, 2 * Math.PI);
-                            ctx.fillStyle = playerColor;
-                            ctx.fill();
-                            ctx.strokeStyle = 'white';
-                            ctx.lineWidth = 2 / zoom;
-                            ctx.stroke();
+        if (isLocalPlayer || isTeammate) {
+            if (showTeammates) {
+                shouldDrawPlayer = true;
+                currentPlayerColor = teammateColor;
+            }
+        } else if (player.IsPMC) {
+            if (showPlayers) {
+                shouldDrawPlayer = true;
+                currentPlayerColor = playerColor;
+            }
+            pmcCount++;
+        } else if (isBoss(player.Name)) {
+            if (showBosses) {
+                shouldDrawPlayer = true;
+                currentPlayerColor = bossColor;
+            }
+            bossCount++;
+        } else if (isFollowerOrGuard(player.Name)) {
+            if (showScavs) {
+                shouldDrawPlayer = true;
+                currentPlayerColor = scavColor;
+            }
+            scavCount++;
+        } else {
+            if (showScavs) {
+                shouldDrawPlayer = true;
+                currentPlayerColor = scavColor;
+            }
+            scavCount++;
+        }
 
-                            let lineEndX, lineEndY;
+        if (shouldDrawPlayer) {
+            const coords = convertPositionToMapCoords(player.Position);
+            if (coords) {
+                if (isAlive) {
+                    ctx.beginPath();
+                    ctx.arc(coords.x, coords.y, 8 / zoom, 0, 2 * Math.PI);
+                    ctx.fillStyle = currentPlayerColor;
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2 / zoom;
+                    ctx.stroke();
 
-                            if (selectedPlayer && player.ProfileID !== selectedPlayerId && isLookingAtPlayer(player, selectedPlayer)) {
-                                const distanceToSelected = calculateDistance(player.Position, selectedPlayer.Position);
-                                if (distanceToSelected <= 300) {
-                                    const selectedCoords = convertPositionToMapCoords(selectedPlayer.Position);
-                                    lineEndX = selectedCoords.x;
-                                    lineEndY = selectedCoords.y;
-                                } else {
-                                    drawNormalDirectionLine(player, coords);
-                                }
-                            } else {
-                                drawNormalDirectionLine(player, coords);
-                            }
+                    let lineEndX, lineEndY;
 
-                            ctx.beginPath();
-                            ctx.moveTo(coords.x, coords.y);
-                            ctx.lineTo(lineEndX, lineEndY);
-                            ctx.strokeStyle = 'white';
-                            ctx.lineWidth = 2 / zoom;
-                            ctx.stroke();
-                        } else if (showDeadBodies) {
-                            ctx.font = `${20 / zoom}px Arial`;
-                            ctx.fillStyle = player.IsPMC || isBoss(player.Name) || isFollowerOrGuard(player.Name) ? 'black' : 'white';
-                            ctx.textAlign = 'center';
-                            ctx.fillText('X', coords.x, coords.y + 5 / zoom);
+                    if (selectedPlayer && player.ProfileID !== selectedPlayerId && isLookingAtPlayer(player, selectedPlayer)) {
+                        const distanceToSelected = calculateDistance(player.Position, selectedPlayer.Position);
+                        if (distanceToSelected <= 300) {
+                            const selectedCoords = convertPositionToMapCoords(selectedPlayer.Position);
+                            lineEndX = selectedCoords.x;
+                            lineEndY = selectedCoords.y;
+                        } else {
+                            drawNormalDirectionLine(player, coords);
                         }
                     } else {
-                        console.log('Invalid player coordinates', player.Position);
+                        drawNormalDirectionLine(player, coords);
                     }
-                }
-            });
 
-            // Update the player stats
-            document.getElementById('pmcCount').textContent = pmcCount;
-            document.getElementById('scavCount').textContent = scavCount;
-            document.getElementById('bossCount').textContent = bossCount;
+                    ctx.beginPath();
+                    ctx.moveTo(coords.x, coords.y);
+                    ctx.lineTo(lineEndX, lineEndY);
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2 / zoom;
+                    ctx.stroke();
+                } else if (showDeadBodies) {
+                    ctx.font = `${20 / zoom}px Arial`;
+                    ctx.fillStyle = player.IsPMC || isBoss(player.Name) || isFollowerOrGuard(player.Name) ? 'black' : 'white';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('X', coords.x, coords.y + 5 / zoom);
+                }
+            } else {
+                console.log('Invalid player coordinates', player.Position);
+            }
         }
+    });
+
+    document.getElementById('pmcCount').textContent = pmcCount;
+    document.getElementById('scavCount').textContent = scavCount;
+    document.getElementById('bossCount').textContent = bossCount;
+}
+
+
 
         function drawNormalDirectionLine(player, coords) {
             const lineLength = 25 / zoom;
@@ -797,146 +810,148 @@ function isLookingAtPlayer(player, targetPlayer) {
         }
 
         function drawLoot() {
-    const minLootValue = document.getElementById('minLootValue').value;
-    const importantLootPrice = document.getElementById('importantLootPrice').value;
-    const showLoot = document.getElementById('showLoot').checked;
-    const showContainers = document.getElementById('showContainers').checked;
-    const displaylootNames = document.getElementById('displaylootNames').checked; // Check for the new checkbox
-    const displaycontNames = document.getElementById('displaycontNames').checked; // Check for the new checkbox
-    const searchQuery = document.getElementById('lootSearch').value.toLowerCase();
+            const lootColor = document.getElementById('lootColor').value;
+            const containerColor = document.getElementById('containerColor').value;
+            const minLootValue = document.getElementById('minLootValue').value;
+            const importantLootPrice = document.getElementById('importantLootPrice').value;
+            const showLoot = document.getElementById('showLoot').checked;
+            const showContainers = document.getElementById('showContainers').checked;
+            const displaylootNames = document.getElementById('displaylootNames').checked; // Check for the new checkbox
+            const displaycontNames = document.getElementById('displaycontNames').checked; // Check for the new checkbox
+            const searchQuery = document.getElementById('lootSearch').value.toLowerCase();
 
-    if (!showLoot || !looseloot || looseloot.length === 0) return;
+            if (!showLoot || !looseloot || looseloot.length === 0) return;
 
-    const localPlayer = mapData.players.find(player => player.IsLocalPlayer);
-    const localPlayerZ = localPlayer ? localPlayer.Position.Z : 0;
+            const localPlayer = mapData.players.find(player => player.IsLocalPlayer);
+            const localPlayerZ = localPlayer ? localPlayer.Position.Z : 0;
 
-    // Draw loose loot
-    // Draw loose loot
-    looseloot.forEach(item => {
-        const itemName = item.Name ? item.Name.toLowerCase() : '';
-        
-        // Only draw loot with a Value greater than 0
-        if (item.Value > 0 && item.Value >= minLootValue && itemName.includes(searchQuery)) {
-            if (item.Position && item.Position.X !== undefined && item.Position.Y !== undefined) {
-                const coords = convertPositionToMapCoords(item.Position);
+            // Draw loose loot
+            // Draw loose loot
+            looseloot.forEach(item => {
+                const itemName = item.Name ? item.Name.toLowerCase() : '';
 
-                if (coords) {
-                    ctx.beginPath();
-                    ctx.arc(coords.x, coords.y, 5 / zoom, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'green';
-                    ctx.fill();
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 1 / zoom;
-                    ctx.stroke();
-
-                    if (item.Value >= importantLootPrice) {
-                        ctx.beginPath();
-                        ctx.arc(coords.x, coords.y, 7 / zoom, 0, 2 * Math.PI);
-                        ctx.strokeStyle = 'red';
-                        ctx.lineWidth = 2 / zoom;
-                        ctx.stroke();
-                    }
-
-                        if (displaylootNames) { // Only display names if the checkbox is checked
-                            ctx.font = `${12 / zoom}px Arial`;
-                            ctx.fillStyle = 'white';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(item.Name, coords.x, coords.y - 10 / zoom);
+                // Only draw loot with a Value greater than 0
+                if (item.Value > 0 && item.Value >= minLootValue && itemName.includes(searchQuery)) {
+                    if (item.Position && item.Position.X !== undefined && item.Position.Y !== undefined) {
+                        const coords = convertPositionToMapCoords(item.Position);
+                    
+                        if (coords) {
+                            ctx.beginPath();
+                            ctx.arc(coords.x, coords.y, 5 / zoom, 0, 2 * Math.PI);
+                            ctx.fillStyle = lootColor;
+                            ctx.fill();
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = 1 / zoom;
+                            ctx.stroke();
+                        
+                            if (item.Value >= importantLootPrice) {
+                                ctx.beginPath();
+                                ctx.arc(coords.x, coords.y, 7 / zoom, 0, 2 * Math.PI);
+                                ctx.strokeStyle = 'red';
+                                ctx.lineWidth = 2 / zoom;
+                                ctx.stroke();
+                            }
+                        
+                                if (displaylootNames) { // Only display names if the checkbox is checked
+                                    ctx.font = `${12 / zoom}px Arial`;
+                                    ctx.fillStyle = 'white';
+                                    ctx.textAlign = 'center';
+                                    ctx.fillText(item.Name, coords.x, coords.y - 10 / zoom);
+                                }
                         }
+                    }
                 }
+            });
+        
+            // Draw containers
+            if (!showContainers) return;
+        
+            // Draw containers
+            // Draw containers
+            if (showContainers && containers.length > 0) {
+                containers.forEach(container => {
+                    // Normalize the container name to match the checkbox IDs
+                    const normalizedContainerName = `container${container.name
+                        .replace(/\s+/g, '') // Remove spaces
+                        .replace(/^\w/, c => c.toUpperCase())}`; // Capitalize the first letter
+                
+                    const checkbox = document.getElementById(normalizedContainerName);
+                
+                    // Skip if the container's checkbox is not checked
+                    if (!checkbox || !checkbox.checked) return;
+                
+                    const coords = convertExfilToMapCoords(container.position);
+                    if (coords) {
+                        // Draw the container as a green circle
+                        ctx.beginPath();
+                        ctx.arc(coords.x, coords.y, 5 / zoom, 0, 2 * Math.PI);
+                        ctx.fillStyle = containerColor;
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 1 / zoom;
+                        ctx.stroke();
+                    
+                        // Display the container name
+                        if (displaycontNames) { // Only display names if the checkbox is checked
+                        ctx.font = `${12 / zoom}px Arial`;
+                        ctx.fillStyle = 'white';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(container.name, coords.x, coords.y - 10 / zoom);
+                    }
+                    }
+                });
             }
+        
+            // Draw corpses
+            corpses.forEach(corpse => {
+                const corpseItemsMatch = corpse.Items.some(item => {
+                    const itemName = item.Name ? item.Name.toLowerCase() : '';
+                    return item.Value >= minLootValue && itemName.includes(searchQuery);
+                });
+            
+                if (corpseItemsMatch) {
+                    const coords = convertPositionToMapCoords(corpse.Position);
+                    if (coords) {
+                        const heightDifference = corpse.Position.Z - localPlayerZ;
+                    
+                        ctx.beginPath();
+                        if (heightDifference > 2.5) {
+                            ctx.moveTo(coords.x, coords.y - 5 / zoom);
+                            ctx.lineTo(coords.x - 5 / zoom, coords.y + 5 / zoom);
+                            ctx.lineTo(coords.x + 5 / zoom, coords.y + 5 / zoom);
+                            ctx.closePath();
+                            ctx.fillStyle = 'yellow';
+                        } else if (heightDifference < -2.5) {
+                            ctx.moveTo(coords.x, coords.y + 5 / zoom);
+                            ctx.lineTo(coords.x - 5 / zoom, coords.y - 5 / zoom);
+                            ctx.lineTo(coords.x + 5 / zoom, coords.y - 5 / zoom);
+                            ctx.closePath();
+                            ctx.fillStyle = 'yellow';
+                        } else {
+                            ctx.arc(coords.x, coords.y, 5 / zoom, 0, 2 * Math.PI);
+                            ctx.fillStyle = 'green';
+                        }
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 1 / zoom;
+                        ctx.stroke();
+                    
+                        if (corpse.Items.some(item => item.Value >= importantLootPrice)) {
+                            ctx.beginPath();
+                            ctx.arc(coords.x, coords.y, 7 / zoom, 0, 2 * Math.PI);
+                            ctx.strokeStyle = 'red';
+                            ctx.lineWidth = 2 / zoom;
+                            ctx.stroke();
+                        }
+                    
+                        ctx.font = `${12 / zoom}px Arial`;
+                        ctx.fillStyle = 'white';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(corpse.Name, coords.x, coords.y + 25 / zoom);
+                    }
+                }
+            });
         }
-    });
-
-    // Draw containers
-    if (!showContainers) return;
-
-    // Draw containers
-    // Draw containers
-    if (showContainers && containers.length > 0) {
-        containers.forEach(container => {
-            // Normalize the container name to match the checkbox IDs
-            const normalizedContainerName = `container${container.name
-                .replace(/\s+/g, '') // Remove spaces
-                .replace(/^\w/, c => c.toUpperCase())}`; // Capitalize the first letter
-
-            const checkbox = document.getElementById(normalizedContainerName);
-
-            // Skip if the container's checkbox is not checked
-            if (!checkbox || !checkbox.checked) return;
-
-            const coords = convertExfilToMapCoords(container.position);
-            if (coords) {
-                // Draw the container as a green circle
-                ctx.beginPath();
-                ctx.arc(coords.x, coords.y, 5 / zoom, 0, 2 * Math.PI);
-                ctx.fillStyle = 'brown';
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 1 / zoom;
-                ctx.stroke();
-
-                // Display the container name
-                if (displaycontNames) { // Only display names if the checkbox is checked
-                ctx.font = `${12 / zoom}px Arial`;
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.fillText(container.name, coords.x, coords.y - 10 / zoom);
-            }
-            }
-        });
-    }
-
-    // Draw corpses
-    corpses.forEach(corpse => {
-        const corpseItemsMatch = corpse.Items.some(item => {
-            const itemName = item.Name ? item.Name.toLowerCase() : '';
-            return item.Value >= minLootValue && itemName.includes(searchQuery);
-        });
-
-        if (corpseItemsMatch) {
-            const coords = convertPositionToMapCoords(corpse.Position);
-            if (coords) {
-                const heightDifference = corpse.Position.Z - localPlayerZ;
-
-                ctx.beginPath();
-                if (heightDifference > 2.5) {
-                    ctx.moveTo(coords.x, coords.y - 5 / zoom);
-                    ctx.lineTo(coords.x - 5 / zoom, coords.y + 5 / zoom);
-                    ctx.lineTo(coords.x + 5 / zoom, coords.y + 5 / zoom);
-                    ctx.closePath();
-                    ctx.fillStyle = 'yellow';
-                } else if (heightDifference < -2.5) {
-                    ctx.moveTo(coords.x, coords.y + 5 / zoom);
-                    ctx.lineTo(coords.x - 5 / zoom, coords.y - 5 / zoom);
-                    ctx.lineTo(coords.x + 5 / zoom, coords.y - 5 / zoom);
-                    ctx.closePath();
-                    ctx.fillStyle = 'yellow';
-                } else {
-                    ctx.arc(coords.x, coords.y, 5 / zoom, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'green';
-                }
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 1 / zoom;
-                ctx.stroke();
-
-                if (corpse.Items.some(item => item.Value >= importantLootPrice)) {
-                    ctx.beginPath();
-                    ctx.arc(coords.x, coords.y, 7 / zoom, 0, 2 * Math.PI);
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 2 / zoom;
-                    ctx.stroke();
-                }
-
-                ctx.font = `${12 / zoom}px Arial`;
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.fillText(corpse.Name, coords.x, coords.y + 25 / zoom);
-            }
-        }
-    });
-}
 
 
 
@@ -1419,41 +1434,38 @@ window.addEventListener('load', connectWebSocket);
         }
 
         function saveSettings() {
-            const settings = {};
+    const settings = {};
 
-            // Save checkboxes, input fields, and other settings
-            document.querySelectorAll('input, select').forEach(input => {
-                if (input.type === 'checkbox') {
-                    settings[input.id] = input.checked;
-                } else if (input.type === 'range' || input.type === 'number' || input.type === 'text') {
-                    settings[input.id] = input.value;
-                } else if (input.tagName === 'SELECT') {
-                    settings[input.id] = input.value;
-                }
-            });
-
-            localStorage.setItem('radarSettings', JSON.stringify(settings));
+    // Save checkboxes, input fields, and other settings
+    document.querySelectorAll('input, select').forEach(input => {
+        if (input.type === 'checkbox') {
+            settings[input.id] = input.checked;
+        } else if (input.type === 'range' || input.type === 'number' || input.type === 'text' || input.type === 'color') {
+            settings[input.id] = input.value;
+        } else if (input.tagName === 'SELECT') {
+            settings[input.id] = input.value;
         }
+    });
 
-        function loadSettings() {
-            const settings = JSON.parse(localStorage.getItem('radarSettings')) || {};
+    localStorage.setItem('radarSettings', JSON.stringify(settings));
+}
 
-            // Restore checkboxes, input fields, and other settings
-            document.querySelectorAll('input, select').forEach(input => {
-                if (input.id in settings) {
-                    if (input.type === 'checkbox') {
-                        input.checked = settings[input.id];
-                    } else if (input.type === 'range' || input.type === 'number' || input.type === 'text') {
-                        input.value = settings[input.id];
-                        if (input.id === 'minLootValue') {
-                            document.getElementById('minLootValueDisplay').textContent = settings[input.id];
-                        }
-                    } else if (input.tagName === 'SELECT') {
-                        input.value = settings[input.id];
-                    }
-                }
-            });
-        }        
+function loadSettings() {
+    const settings = JSON.parse(localStorage.getItem('radarSettings')) || {};
+
+    // Restore checkboxes, input fields, and other settings
+    document.querySelectorAll('input, select').forEach(input => {
+        if (input.id in settings) {
+            if (input.type === 'checkbox') {
+                input.checked = settings[input.id];
+            } else if (input.type === 'range' || input.type === 'number' || input.type === 'text' || input.type === 'color') {
+                input.value = settings[input.id];
+            } else if (input.tagName === 'SELECT') {
+                input.value = settings[input.id];
+            }
+        }
+    });
+} 
 
         function updateMostValuableLoot() {
             const mostValuableLootList = document.getElementById('mostValuableLootList');
