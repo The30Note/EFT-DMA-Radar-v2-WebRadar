@@ -1,9 +1,9 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using Vmmsharp;
 
 namespace eft_dma_radar
@@ -22,8 +22,11 @@ namespace eft_dma_radar
         private static int _ticksCounter = 0;
         private static volatile int _ticks = 0;
         private static readonly Stopwatch _tickSw = new();
+        private static InputManager _inputManager;
 
         public static Game.GameStatus GameStatus = Game.GameStatus.NotFound;
+
+        public static Game Game => _game;
 
         #region Getters
 
@@ -31,7 +34,6 @@ namespace eft_dma_radar
         {
             get => vmmInstance;
         }
-
         public static int Ticks
         {
             get => _ticks;
@@ -97,9 +99,14 @@ namespace eft_dma_radar
             get => _game?.Loot;
         }
 
-        public static ReadOnlyCollection<Grenade> Grenades
+        public static List<Grenade> Grenades
         {
             get => _game?.Grenades;
+        }
+
+        public static List<Tripwire> Tripwires
+        {
+            get => _game?.Tripwires;
         }
 
         public static bool LoadingLoot
@@ -107,10 +114,25 @@ namespace eft_dma_radar
             get => _game?.LoadingLoot ?? false;
         }
 
-        public static ReadOnlyCollection<Exfil> Exfils
+        public static List<Exfil> Exfils
         {
             get => _game?.Exfils;
         }
+
+        public static List<Transit> Transits
+        {
+            get => _game?.Transits;
+        }
+
+        public static bool IsExtracting
+        {
+            get => _game.IsExtracting;
+        }
+
+        //public static bool IsTransitMode
+        //{
+        //    get => _game.IsTransitMode;
+        //}
 
         public static PlayerManager PlayerManager
         {
@@ -137,7 +159,7 @@ namespace eft_dma_radar
             get => _game?.Chams;
         }
 
-        public static ReadOnlyCollection<PlayerCorpse> Corpses
+        public static List<PlayerCorpse> Corpses
         {
             get => _game?.Corpses;
         }
@@ -170,7 +192,7 @@ namespace eft_dma_radar
                 if (!File.Exists("mmap.txt"))
                 {
                     Program.Log("No MemMap, attempting to generate...");
-                    GenerateMMap();
+                    Memory.GenerateMMap();
                 }
                 else
                 {
@@ -178,7 +200,7 @@ namespace eft_dma_radar
                     vmmInstance = new Vmm("-printf", "-device", "fpga://algo=0", "-memmap", "mmap.txt");
                 }
 
-                InitiateMemoryWorker();
+                Memory.InitiateMemoryWorker();
             }
             catch (Exception ex)
             {
@@ -189,8 +211,8 @@ namespace eft_dma_radar
                     if (File.Exists("mmap.txt"))
                         File.Delete("mmap.txt");
 
-                    GenerateMMap();
-                    InitiateMemoryWorker();
+                    Memory.GenerateMMap();
+                    Memory.InitiateMemoryWorker();
                 }
                 catch
                 {
@@ -206,12 +228,15 @@ namespace eft_dma_radar
             Memory.StartMemoryWorker();
             Program.HideConsole();
             Memory._tickSw.Start();
+
+            InputManager.SetVmmInstance(Memory.vmmInstance);
+            InputManager.InitInputManager();
         }
 
         private static void GenerateMMap()
         {
             vmmInstance = new Vmm("-printf", "-device", "fpga://algo=0", "-waitinitialize");
-            GetMemMap();
+            Memory.GetMemMap();
         }
 
         /// <summary>
@@ -324,9 +349,7 @@ namespace eft_dma_radar
         private static void StartMemoryWorker()
         {
             if (Memory._workerThread is not null && Memory._workerThread.IsAlive)
-            {
                 return;
-            }
 
             Memory._workerCancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = Memory._workerCancellationTokenSource.Token;
@@ -383,6 +406,7 @@ namespace eft_dma_radar
                 while (true)
                 {
                     Program.Log("Attempting to find EFT Process...");
+
                     while (!Memory.GetPid() || !Memory.GetModuleBase())
                     {
                         Program.Log("EFT startup failed, trying again in 15 seconds...");

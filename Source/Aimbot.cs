@@ -397,11 +397,22 @@ namespace eft_dma_radar
                 return false;
             }
 
-            var meow = mem.RegValueRead("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\CurrentBuild", out _);
-            var Winver = Int32.Parse(System.Text.Encoding.Unicode.GetString(meow));
+        var meow = mem.RegValueRead("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\CurrentBuild", out _);
+        if (meow == null)
+        {
+            Program.Log("Failed to read registry value for CurrentBuild");
+            return false; 
+        }
+        
+        var Winver = Int32.Parse(System.Text.Encoding.Unicode.GetString(meow));
+        
+        var mrrp = mem.RegValueRead("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\UBR", out _);
+        if (mrrp == null)
+        {
+            Program.Log("Failed to read registry value for UBR");
+            return false;
+        }
 
-
-            var mrrp = mem.RegValueRead("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\UBR", out _);
             uint Ubr = BitConverter.ToUInt32(mrrp);
 
 
@@ -758,8 +769,14 @@ namespace eft_dma_radar
         {
             screen = new Vector2();
             pos = new Vector3();
-
-            if (player.BoneTransforms != null && player.BoneTransforms.Count != 0 && !player.IsLocalPlayer && !player.IsFriendlyActive && player.IsAlive && player.IsActive && Vector3.Distance(player.Position, LocalPlayer.Position) < _config.AimbotMaxDistance)
+        
+            if (player.BoneTransforms == null || player.BoneTransforms.Count == 0)
+            {
+                Program.Log($"Player {player.Name} - BoneTransforms are null or empty.");
+                return false; // Correct return value for bool type
+            }
+        
+            if (!player.IsLocalPlayer && !player.IsFriendlyActive && player.IsAlive && player.IsActive && Vector3.Distance(player.Position, LocalPlayer.Position) < _config.AimbotMaxDistance)
             {
                 Vector3 temp = GetBonePosition(player, bone);
                 Vector3 BonePos = new Vector3(temp.X, temp.Z, temp.Y);
@@ -767,10 +784,11 @@ namespace eft_dma_radar
                 {
                     screen = scrpos;
                     pos = BonePos;
-                    return true;
+                    return true; // Successfully found the bone position
                 }
             }
-            return false;
+        
+            return false; // Default case if bone position is not found
         }
 
         public Vector3 GetBonePosition(Player player, PlayerBones bone)
@@ -780,8 +798,18 @@ namespace eft_dma_radar
                 return new Vector3();
             }
 
-            var boneMatrix = Memory.ReadPtrChain(player.PlayerBody, [0x28, 0x28, 0x10]);
-            var pointer = Memory.ReadPtrChain(boneMatrix, [0x20 + ((uint)bone * 0x8), 0x10]);
+            var boneMatrix = Memory.ReadPtrChain(player.PlayerBody, new uint[] { 0x28, 0x28, 0x10 });
+                if (boneMatrix == 0)
+                {
+                    Program.Log($"Player {player.Name} - Bone matrix pointer is null.");
+                    return Vector3.Zero;
+                }
+            var pointer = Memory.ReadPtrChain(boneMatrix, new uint[] { 0x20 + ((uint)bone * 0x8), 0x10 });
+                if (pointer == 0)
+                {
+                    Program.Log($"Player {player.Name} - Bone pointer for {bone} is null.");
+                    return Vector3.Zero;
+                }
             Transform boneTransform = new Transform(pointer, false);
             return boneTransform.GetPosition();
         }
@@ -797,114 +825,163 @@ namespace eft_dma_radar
             if (!InputHandla.done_init)
             {
                 if (keyboard.Init())
-                    Program.Log("Keyboard hook init");
+                    Program.Log("Keyboard hook initialized.");
             }
 
             // Check if the aimbot key is held down
             bool bHeld = keyboard.IsKeyDown(_aimbotKeybind);
 
+            if (bHeld)
+            {
+                //Program.Log($"Aimbot key (KeyCode: {_aimbotKeybind}) is held down.");
+            }
+
             try
             {
                 if (this.InGame && !Memory.InHideout && _cameraManager != null)
                 {
+                    //Program.Log("Player is in-game and not in hideout.");
+
                     // Filter active and alive players within max distance
                     var players = this.AllPlayers?.Select(x => x.Value)
                         .Where(x => x.IsActive && x.IsAlive && Vector3.Distance(x.Position, LocalPlayer.Position) < _config.AimbotMaxDistance)
                         .ToList();
 
-                    if (players != null && players.Any())
+                    if (players == null || !players.Any())
                     {
-                        this._cameraManager.GetViewmatrixAsync();
-                        Vector3 cameraPos = GetFireportPos();
+                        //Program.Log("No valid players found within range.");
+                        return;
+                    }
 
-                        if (bHeld && bHeld == bLastHeld && udPlayer != null && udPlayer.IsAlive && udPlayer.IsActive)
+                    //Program.Log($"Found {players.Count} players within range.");
+
+                    this._cameraManager.GetViewmatrixAsync();
+                    Vector3 cameraPos = GetFireportPos();
+
+                    if (cameraPos == Vector3.Zero)
+                    {
+                        Program.Log("Camera position is invalid.");
+                        return;
+                    }
+
+                    if (bHeld && bHeld == bLastHeld && udPlayer != null && udPlayer.IsAlive && udPlayer.IsActive)
+                    {
+                        Program.Log("Continuing to lock onto the current target.");
+                        Vector3 targetPos = GetClosestBoneScr(udPlayer, out Vector2 screenPos);
+
+                        if (targetPos == Vector3.Zero)
                         {
-                            // Existing target lock logic
-                            Vector3 targetPos = GetClosestBoneScr(udPlayer, out Vector2 screenPos);
+                            Program.Log("Failed to retrieve target bone position.");
+                            return;
+                        }
+
+                        Vector2 rel = new Vector2(screenPos.X - (1920f / 2f), screenPos.Y - (1080f / 2f));
+                        var distToCrosshair = Math.Sqrt((rel.X * rel.X) + (rel.Y * rel.Y));
+
+                        if (distToCrosshair < _aimbotFOV)
+                        {
+                            Vector2 ang = CalcAngle(cameraPos, targetPos);
+                            if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
+                            {
+                                Program.Log($"Aiming at target with angle: {ang}");
+                                LocalPlayer.SetRotationFr(ang);
+
+                            }
+                            else
+                            {
+                                Program.Log("Calculated angles are invalid.");
+                            }
+                        }
+                        else
+                        {
+                            Program.Log("Target is outside the FOV.");
+                        }
+                    }
+                    else if (bHeld && (bHeld != bLastHeld || udPlayer == null || !udPlayer.IsAlive || !udPlayer.IsActive))
+                    {
+                        Program.Log("Searching for new targets within FOV.");
+                        List<Player> validTargets = new List<Player>();
+
+                        foreach (var player in players)
+                        {
+                            Vector3 targetPos = GetClosestBoneScr(player, out Vector2 screenPos);
+
+                            if (targetPos == Vector3.Zero)
+                            {
+                                Program.Log($"Player {player.Name} - Bone position not found.");
+                                continue;
+                            }
+
                             Vector2 rel = new Vector2(screenPos.X - (1920f / 2f), screenPos.Y - (1080f / 2f));
                             var distToCrosshair = Math.Sqrt((rel.X * rel.X) + (rel.Y * rel.Y));
 
-                            if (distToCrosshair < _aimbotFOV)
+                            Program.Log($"Player {player.Name} - Distance to crosshair: {distToCrosshair}, FOV: {_aimbotFOV}");
+
+                            if (distToCrosshair < _aimbotFOV && distToCrosshair > 2)
                             {
-                                Vector2 ang = CalcAngle(cameraPos, targetPos);
+                                Program.Log($"Target '{player.Name}' selected for aiming. Distance to crosshair: {distToCrosshair}");
+                                validTargets.Add(player);
+                            }
+                        }
+
+                        if (validTargets.Count > 1 && aimbotClosest)
+                        {
+                            Program.Log("Multiple targets found. Prioritizing closest target.");
+                            Player closestPlayer = validTargets
+                                .OrderBy(player => Vector3.Distance(player.Position, LocalPlayer.Position))
+                                .FirstOrDefault();
+
+                            if (closestPlayer != null)
+                            {
+                                Vector3 closestBone = GetClosestBoneScr(closestPlayer, out Vector2 screenPos);
+                                Vector2 ang = CalcAngle(cameraPos, closestBone);
+
                                 if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
                                 {
+                                    Program.Log($"Locking onto closest target with angle: {ang}");
                                     LocalPlayer.SetRotationFr(ang);
+                                    udPlayer = closestPlayer;  // Lock onto closest target
                                 }
                             }
                         }
-                        else if (bHeld && (bHeld != bLastHeld || udPlayer == null || !udPlayer.IsAlive || !udPlayer.IsActive))
+                        else if (validTargets.Count > 0)
                         {
-                            // Start searching for valid targets within FOV
-                            List<Player> validTargets = new List<Player>();
-
-                            foreach (var player in players)
-                            {
-                                Vector3 targetPos = GetClosestBoneScr(player, out Vector2 screenPos);
-                                Vector2 rel = new Vector2(screenPos.X - (1920f / 2f), screenPos.Y - (1080f / 2f));
-                                var distToCrosshair = Math.Sqrt((rel.X * rel.X) + (rel.Y * rel.Y));
-
-                                // Only consider players within FOV
-                                if (distToCrosshair < _aimbotFOV && distToCrosshair > 2)
+                            Program.Log("Single valid target found. Aiming.");
+                            Player closestToCrosshair = validTargets
+                                .OrderBy(player =>
                                 {
-                                    validTargets.Add(player);
+                                    GetClosestBoneScr(player, out Vector2 screenPos);
+                                    return Vector2.Distance(screenPos, new Vector2(1920f / 2f, 1080f / 2f));
+                                })
+                                .FirstOrDefault();
+
+                            if (closestToCrosshair != null)
+                            {
+                                Vector3 closestBone = GetClosestBoneScr(closestToCrosshair, out Vector2 screenPos);
+                                Vector2 ang = CalcAngle(cameraPos, closestBone);
+
+                                if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
+                                {
+                                    Program.Log($"Aiming at target: {closestToCrosshair.Name}");
+                                    LocalPlayer.SetRotationFr(ang);
+                                    udPlayer = closestToCrosshair;  // Lock onto the closest to the crosshair
                                 }
                             }
-
-                            if (validTargets.Count > 1 && aimbotClosest)
-                            {
-                                // Multiple targets in FOV, prioritize the one closest to the player
-                                Player closestPlayer = validTargets
-                                    .OrderBy(player => Vector3.Distance(player.Position, LocalPlayer.Position))
-                                    .FirstOrDefault();
-
-                                if (closestPlayer != null)
-                                {
-                                    Vector3 closestBone = GetClosestBoneScr(closestPlayer, out Vector2 screenPos);
-                                    Vector2 ang = CalcAngle(cameraPos, closestBone);
-
-                                    if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
-                                    {
-                                        LocalPlayer.SetRotationFr(ang);
-                                        udPlayer = closestPlayer;  // Lock onto closest target
-                                    }
-                                }
-                            }
-                            else if (validTargets.Count > 0)
-                            {
-                                // If only one target or AimbotClosest is off, target the closest one to the crosshair
-                                Player closestToCrosshair = validTargets
-                                    .OrderBy(player => 
-                                    {
-                                        GetClosestBoneScr(player, out Vector2 screenPos);
-                                        return Vector2.Distance(screenPos, new Vector2(1920f / 2f, 1080f / 2f));
-                                    })
-                                    .FirstOrDefault();
-
-                                if (closestToCrosshair != null)
-                                {
-                                    Vector3 closestBone = GetClosestBoneScr(closestToCrosshair, out Vector2 screenPos);
-                                    Vector2 ang = CalcAngle(cameraPos, closestBone);
-
-                                    if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
-                                    {
-                                        LocalPlayer.SetRotationFr(ang);
-                                        udPlayer = closestToCrosshair;  // Lock onto the closest to the crosshair
-                                    }
-                                }
-                            }
+                        }
+                        else
+                        {
+                            Program.Log("No valid targets within FOV.");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Program.Log($"ERROR -> Aimer botter -> {ex.Message}\nStackTrace:{ex.StackTrace}");
+                Program.Log($"ERROR -> AimerBotter -> {ex.Message}\nStackTrace: {ex.StackTrace}");
             }
 
             bLastHeld = bHeld;  // Update the held state for the next frame
         }
-
 
         public Vector3 GetClosestBoneScr(Player player, out Vector2 screenPos)
         {

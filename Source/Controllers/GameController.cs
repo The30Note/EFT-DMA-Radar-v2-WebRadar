@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
@@ -21,7 +20,7 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    return StatusCode(503, "Game has ended. Waiting for new game to start.");
+                    return StatusCode(503, "Game has ended. Waiting for a new game to start.");
                 }
 
                 var players = Memory.Players;
@@ -43,10 +42,24 @@ namespace eft_dma_radar.Controllers
                     player.AccountID,
                     Gear = player.Gear.Select(g => new
                     {
-                        Slot = g.Key,
-                        LongName = g.Value?.Long, 
-                        ShortName = g.Value?.Short, 
-                        ItemValue = g.Value?.Value 
+                        Slot = g.Slot.Key, // Access the Key from Slot
+                        Item = new
+                        {
+                            g.Item?.Long,
+                            g.Item?.Short,
+                            g.Item?.Value,
+                            Loot = g.Item?.Loot?.Select(l => new
+                            {
+                                l.Name,
+                                l.ID,
+                                l.Value,
+                                l.Position
+                            }),
+                            AmmoType = g.Item?.GearInfo.AmmoType,
+                            AmmoCount = g.Item?.GearInfo.AmmoCount,
+                            Thermal = g.Item?.GearInfo.Thermal,
+                            NightVision = g.Item?.GearInfo.NightVision
+                        }
                     }),
                     Position = new
                     {
@@ -56,8 +69,8 @@ namespace eft_dma_radar.Controllers
                     },
                     Rotation = new
                     {
-                        Yaw = player.Rotation.X,  // Horizontal rotation
-                        Pitch = player.Rotation.Y // Vertical rotation
+                        Yaw = player.Rotation.X,
+                        Pitch = player.Rotation.Y
                     }
                 });
 
@@ -77,7 +90,7 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    return StatusCode(503, "Game has ended. Waiting for new game to start.");
+                    return StatusCode(503, "Game has ended. Waiting for a new game to start.");
                 }
 
                 var mapName = Memory.MapNameFormatted;
@@ -125,22 +138,16 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    return StatusCode(503, "Game has ended. Waiting for new game to start.");
+                    return StatusCode(503, "Game has ended. Waiting for a new game to start.");
                 }
 
-                if (Memory.Loot == null || Memory.Loot.Loot == null)
-                {
-                    Console.WriteLine("Loot data is still loading.");
-                    return StatusCode(503, "Loot data is still loading. Please try again later.");
-                }
-        
-                var loot = Memory.Loot.Loot.OfType<LootItem>().ToList();
-                if (!loot.Any())
+                var looseLoot = Memory.Loot?.Loot?.OfType<LootItem>().ToList();
+                if (looseLoot == null || !looseLoot.Any())
                 {
                     return NotFound("No loose loot found.");
                 }
-        
-                var lootData = loot.Select(item => new
+
+                var lootData = looseLoot.Select(item => new
                 {
                     item.Name,
                     item.ID,
@@ -150,9 +157,12 @@ namespace eft_dma_radar.Controllers
                         X = item.Position.X,
                         Y = item.Position.Y,
                         Z = item.Position.Z
-                    }
+                    },
+                    item.RequiredByQuest,
+                    item.Important,
+                    item.AlwaysShow
                 });
-        
+
                 return Ok(lootData);
             }
             catch (Exception ex)
@@ -169,31 +179,29 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    return StatusCode(503, "Game has ended. Waiting for new game to start.");
+                    return StatusCode(503, "Game has ended. Waiting for a new game to start.");
                 }
 
-                if (Memory.Loot == null || !Memory.Loot.HasCachedItems)
+                var containers = Memory.Loot?.Loot?.OfType<LootContainer>().ToList();
+                if (containers == null || !containers.Any())
                 {
-                    return NotFound("Loot data is not available.");
+                    return NotFound("No loot containers found.");
                 }
 
-                var lootContainers = Memory.Loot.Loot.OfType<LootContainer>()
-                    .Select(container => new
-                    {
-                        container.Name,
-                        container.Items,
-                        container.Value,
-                        container.Important, 
-                        Position = new
-                        {
-                            X = container.Position.X,
-                            Y = container.Position.Y,
-                            Z = container.Position.Z
-                        }
-                    })
-                    .ToList();
+            var containerData = containers.Select(container => new
+            {
+                container.Name,
+                Position = new
+                {
+                    X = container.Position.X,
+                    Y = container.Position.Y,
+                    Z = container.Position.Z
+                },
+                container.Important,
+                container.AlwaysShow
+            });
 
-                return Ok(lootContainers);
+                return Ok(containerData);
             }
             catch (Exception ex)
             {
@@ -209,31 +217,30 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    return StatusCode(503, "Game has ended. Waiting for new game to start.");
+                    return StatusCode(503, "Game has ended. Waiting for a new game to start.");
                 }
 
-                if (Memory.Loot == null || !Memory.Loot.HasCachedItems)
+                var corpses = Memory.Loot?.Loot?.OfType<LootCorpse>().ToList();
+                if (corpses == null || !corpses.Any())
                 {
-                    return NotFound("Loot data is not available.");
+                    return NotFound("No loot corpses found.");
                 }
 
-                var lootCorpses = Memory.Loot.Loot.OfType<LootCorpse>()
-                    .Select(corpse => new
-                    {
-                        corpse.Name,
-                        corpse.Items,
-                        corpse.Value,
-                        corpse.Important,
-                        Position = new
-                        {
-                            X = corpse.Position.X,
-                            Y = corpse.Position.Y,
-                            Z = corpse.Position.Z
-                        }
-                    })
-                    .ToList();
+            var corpseData = corpses.Select(corpse => new
+            {
+                corpse.Name,
+                Position = new
+                {
+                    X = corpse.Position.X,
+                    Y = corpse.Position.Y,
+                    Z = corpse.Position.Z
+                },
+                corpse.Value,
+                corpse.Important,
+                corpse.Items
+            });
 
-                return Ok(lootCorpses);
+                return Ok(corpseData);
             }
             catch (Exception ex)
             {
@@ -249,16 +256,16 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    return StatusCode(503, "Game has ended. Waiting for new game to start.");
+                    return StatusCode(503, "Game has ended. Waiting for a new game to start.");
                 }
 
                 if (Memory.QuestManager == null || Memory.QuestManager.QuestItems == null || Memory.QuestManager.QuestZones == null)
                 {
                     return NotFound("Quest items or zones data is not available.");
                 }
-        
+
                 var questItems = Memory.QuestManager.QuestItems
-                    .Where(item => item.Position.X != 0) 
+                    .Where(item => item.Position.X != 0)
                     .Select(item => new
                     {
                         item.Id,
@@ -272,9 +279,8 @@ namespace eft_dma_radar.Controllers
                             Y = item.Position.Y,
                             Z = item.Position.Z
                         }
-                    })
-                    .ToList();
-        
+                    }).ToList();
+
                 var questZones = Memory.QuestManager.QuestZones
                     .Where(zone => zone.Position.X != 0)
                     .Select(zone => new
@@ -289,9 +295,8 @@ namespace eft_dma_radar.Controllers
                             Y = zone.Position.Y,
                             Z = zone.Position.Z
                         }
-                    })
-                    .ToList();
-        
+                    }).ToList();
+
                 return Ok(new { questItems, questZones });
             }
             catch (Exception ex)
@@ -343,28 +348,19 @@ namespace eft_dma_radar.Controllers
         {
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
-                var gameState = new
+                if (Memory.InGame)
                 {
-                    InGame = Memory.InGame,
-                    InHideout = Memory.InHideout,
-                    IsScav = Memory.IsScav
-                };
-
-                if (gameState.InGame)
-                {
-                    Console.WriteLine("Starting WebSocket");
                     using WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
                     await SendUpdates(webSocket);
                 }
                 else
                 {
-                    HttpContext.Response.StatusCode = 503; // Service Unavailable
-                    Console.WriteLine("Stopping WebSocket: Game not in progress");
+                    HttpContext.Response.StatusCode = 503;
                 }
             }
             else
             {
-                HttpContext.Response.StatusCode = 400; // Bad Request
+                HttpContext.Response.StatusCode = 400;
             }
         }
 
@@ -374,278 +370,92 @@ namespace eft_dma_radar.Controllers
             {
                 if (!Memory.InGame)
                 {
-                    var endGameMessage = new { message = "Game has ended. Waiting for new game to start." };
-                    var endGameJson = JsonSerializer.Serialize(endGameMessage);
-                    var endGameBytes = Encoding.UTF8.GetBytes(endGameJson);
-                    var endGameBuffer = new ArraySegment<byte>(endGameBytes);
-        
-                    await webSocket.SendAsync(endGameBuffer, WebSocketMessageType.Text, true, CancellationToken.None);
-                    break; // Exit the loop to close the connection
+                    var endGameMessage = new { message = "Game has ended. Waiting for a new game to start." };
+                    await SendWebSocketMessage(webSocket, endGameMessage);
+                    break;
                 }
-        
-                var containerSettings = Program.Config.DefaultContainerSettings;
-        
-                var updateData = new
-                {
-                    players = Memory.Players.Values.Select(player => new
-                    {
-                        player.Name,
-                        player.IsPMC,
-                        player.IsLocalPlayer,
-                        player.IsAlive,
-                        player.IsActive,
-                        player.Lvl,
-                        player.KDA,
-                        player.ProfileID,
-                        player.AccountID,
-                        player.Type,
-                        Gear = player.Gear.Select(g => new
-                        {
-                            Slot = g.Key,
-                            LongName = g.Value?.Long,
-                            ShortName = g.Value?.Short,
-                            ItemValue = g.Value?.Value
-                        }),
-                        Position = new
-                        {
-                            X = player.Position.X,
-                            Y = player.Position.Y,
-                            Z = player.Position.Z
-                        },
-                        Rotation = new
-                        {
-                            Yaw = player.Rotation.X,
-                            Pitch = player.Rotation.Y
-                        }
-                    }).ToList(),
-        
-                    loot = Memory.Loot.Loot.OfType<LootItem>().Select(l => new
-                    {
-                        l.Name,
-                        l.ID,
-                        l.Value,
-                        Position = new { l.Position.X, l.Position.Y, l.Position.Z }
-                    }).ToList(),
-        
-                    exfils = Memory.Exfils.Select(exfil => new
-                    {
-                        exfil.Name,
-                        exfil.Status,
-                        Position = new { exfil.Position.X, exfil.Position.Y, exfil.Position.Z }
-                    }).ToList(),
-        
-                    corpses = Memory.Loot.Loot.OfType<LootCorpse>().Select(corpse => new
-                    {
-                        corpse.Name,
-                        corpse.Items,
-                        corpse.Value,
-                        corpse.Important,
-                        Position = new
-                        {
-                            X = corpse.Position.X,
-                            Y = corpse.Position.Y,
-                            Z = corpse.Position.Z
-                        }
-                    }).ToList(),
-        
-                    containers = containerSettings["Enabled"]
-                        ? Memory.Loot.Loot.OfType<LootContainer>().Select(container => new
-                        {
-                            container.Name,
-                            container.Items,
-                            container.Value,
-                            container.Important,
-                            Position = new
-                            {
-                                X = container.Position.X,
-                                Y = container.Position.Y,
-                                Z = container.Position.Z
-                            }
-                        }).ToList()
-                        : null
-                };
-        
-                var updateJson = JsonSerializer.Serialize(updateData);
-                var updateBytes = Encoding.UTF8.GetBytes(updateJson);
-                var updateBuffer = new ArraySegment<byte>(updateBytes);
-        
-                await webSocket.SendAsync(updateBuffer, WebSocketMessageType.Text, true, CancellationToken.None);
-                await Task.Delay(100); // Adjust the delay to control the update frequency
-            }
-        }
-        [HttpGet("/ws/connect_v2")]
-        public async Task Connect_c2()
+
+var updateData = new
+{
+    players = Memory.Players.Values.Select(player => new
+    {
+        player.Name,
+        player.IsPMC,
+        player.IsLocalPlayer,
+        player.IsAlive,
+        Gear = player.Gear.Select(g => new
         {
-            if (HttpContext.WebSockets.IsWebSocketRequest)
+            Slot = g.Slot.Key,
+            Item = new
             {
-                WebSocket webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-                await HandleWebSocketAsync(webSocket);
+                g.Item?.Long,
+                g.Item?.Short,
+                g.Item?.Value,
+                AmmoType = g.Item?.GearInfo.AmmoType,
+                AmmoCount = g.Item?.GearInfo.AmmoCount
             }
-            else
+        }),
+        Position = player.Position != null
+            ? new
             {
-                HttpContext.Response.StatusCode = 400;
+                X = player.Position.X,
+                Y = player.Position.Y,
+                Z = player.Position.Z
+            }
+            : new
+            {
+                X = 0f, // Explicit cast to float
+                Y = 0f,
+                Z = 0f
+            },
+        Rotation = player.Rotation != null
+            ? new
+            {
+                Yaw = player.Rotation.X,
+                Pitch = player.Rotation.Y
+            }
+            : new
+            {
+                Yaw = 0f, // Explicit cast to float
+                Pitch = 0f
+            }
+    }),
+    loot = Memory.Loot?.Loot?.Select(l => new
+    {
+        l.Name,
+        l.Value,
+        Position = l.Position != null
+            ? new
+            {
+                X = l.Position.X,
+                Y = l.Position.Y,
+                Z = l.Position.Z
+            }
+            : new
+            {
+                X = 0f, // Explicit cast to float
+                Y = 0f,
+                Z = 0f
+            },
+        l.Important,
+        l.AlwaysShow
+    })
+};
+
+
+
+                await SendWebSocketMessage(webSocket, updateData);
+                await Task.Delay(100);
             }
         }
 
-        private async Task HandleWebSocketAsync(WebSocket webSocket)
+        private async Task SendWebSocketMessage(WebSocket webSocket, object message)
         {
-            var buffer = new byte[1024 * 4];
-            WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            var lastLootUpdate = DateTime.UtcNow; // 记录上次更新的时间
-            var lootData = new List<object>(); // 使用 object 类型
-            var exfilsData = new List<object>(); // 使用 object 类型
-            var containersData = new List<object>(); // 使用 object 类型
-            var corpsesData = new List<object>(); // 使用 object 类型
+            var json = JsonSerializer.Serialize(message);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var buffer = new ArraySegment<byte>(bytes);
 
-
-            while (!result.CloseStatus.HasValue)
-            {
-                // 处理接收到的消息
-                string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                if (message == "get_data")
-                {
-
-                    if (!Memory.InGame)
-                    {
-                        var endGameMessage = new { message = "Game has ended. Waiting for new game to start." };
-                        var endGameJson = JsonSerializer.Serialize(endGameMessage);
-                        var endGameBytes = Encoding.UTF8.GetBytes(endGameJson);
-                        var endGameBuffer = new ArraySegment<byte>(endGameBytes);
-
-                        await webSocket.SendAsync(endGameBuffer, WebSocketMessageType.Text, true, CancellationToken.None);
-                        break; // Exit the loop to close the connection
-                    }
-
-                    var containerSettings = Program.Config.DefaultContainerSettings;
-                    var lootSettings = Program.Config.ProcessLoot;
-                    // 每五秒更新 loot 数据
-                    if ((DateTime.UtcNow - lastLootUpdate).TotalSeconds >= 5)
-                    {
-                        exfilsData = Memory.Exfils.Select(exfil => (object)new
-                        {
-                            exfil.Name,
-                            exfil.Status,
-                            Position = new { exfil.Position.X, exfil.Position.Y, exfil.Position.Z }
-                        }).ToList();
-
-                        corpsesData = Memory.Loot.Loot.OfType<LootCorpse>().Select(corpse => (object)new
-                        {
-                            corpse.Name,
-                            corpse.Items,
-                            corpse.Value,
-                            corpse.Important,
-                            Position = new
-                            {
-                                X = corpse.Position.X,
-                                Y = corpse.Position.Y,
-                                Z = corpse.Position.Z
-                            }
-                        }).ToList();
-
-                        if (lootSettings)
-                        {
-                            lootData = Memory.Loot.Loot.OfType<LootItem>().Select(l => (object)new
-                            {
-                                l.Name,
-                                l.ID,
-                                l.Value,
-                                Position = new { l.Position.X, l.Position.Y, l.Position.Z }
-                            }).ToList();
-
-
-                        }
-                        else
-                        {
-                            lootData = null; // 非五秒情况下 loot 数据为 null
-
-                        }
-
-                        lastLootUpdate = DateTime.UtcNow; // 更新上次更新时间
-                    }
-                    else
-                    {
-                        exfilsData = null;
-                        corpsesData = null;
-                        lootData = null;
-                    }
-
-                    var Mypdd = Memory.Players;
-
-                    int playerCount = Mypdd.Count;
-
-                    //Debug.WriteLine($"playerCount_Mypdd: {playerCount}");
-
-                    var playersData2 = Mypdd.Select(player => new
-                    {
-                        Name = player.Value.Name ?? "Unknown",
-                        IsPMC = player.Value.IsPMC,
-                        IsLocalPlayer = player.Value.IsLocalPlayer,
-                        IsAlive = player.Value.IsAlive,
-                        IsActive = player.Value.IsActive,
-                        Lvl = player.Value.Lvl,
-                        KDA = player.Value.KDA,
-                        ProfileID = player.Value.ProfileID ?? "DefaultProfileID",
-                        AccountID = player.Value.AccountID ?? "DefaultAccountID",
-                        HasExfild = player.Value.HasExfild,
-                        Type = player.Value.Type,
-                        Gear = player.Value.Gear.Select(g => new
-                        {
-                            Slot = g.Key,
-                            LongName = g.Value?.Long ?? "DefaultLongName",
-                            ShortName = g.Value?.Short ?? "DefaultShortName",
-                            ItemValue = g.Value?.Value ?? 0
-                        }).ToList(),
-                        Position = new
-                        {
-                            X = player.Value.Position.X,
-                            Y = player.Value.Position.Y,
-                            Z = player.Value.Position.Z
-                        },
-                        Rotation = new
-                        {
-                            Yaw = player.Value.Rotation.X,
-                            Pitch = player.Value.Rotation.Y
-                        }
-                    }).ToList();
-
-                    //Debug.WriteLine($"-----------------------");
-                    //Debug.WriteLine($"playerCount_Mypdd2: {playersData2.Count}");
-
-                    var updateData = new
-                    {
-                        timestamp = DateTime.UtcNow, // 添加短时间戳
-
-                        players = playersData2,
-
-                        loot = lootData,
-
-                        exfils = exfilsData,
-
-                        corpses = corpsesData,
-
-                        // containers = containersData,
-                    };
-
-
-                    var updateJson = JsonSerializer.Serialize(updateData);
-                    var updateBytes = Encoding.UTF8.GetBytes(updateJson);
-                    var updateBuffer = new ArraySegment<byte>(updateBytes);
-
-                    await webSocket.SendAsync(updateBuffer, WebSocketMessageType.Text, true, CancellationToken.None);
-                    result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    Debug.WriteLine("循环");
-                }
-
-            }
-
-            //// 发送消息
-            //var responseMessage = Encoding.UTF8.GetBytes("Message received");
-            //await webSocket.SendAsync(new ArraySegment<byte>(responseMessage), WebSocketMessageType.Text, true, CancellationToken.None);
-            //result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None 
-
-            // 关闭 WebSocket
-            Debug.WriteLine("CLOSE");
-            await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
+            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
 }
