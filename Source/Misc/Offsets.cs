@@ -169,7 +169,7 @@
 
     public struct ObservedPlayerMovementContext
     {
-        public const uint Rotation = 0x90; // to Vector2
+        public const uint Rotation = 0x88; // to Vector2
     }
 
     public struct PlayerSettings
