@@ -169,7 +169,7 @@
 
     public struct ObservedPlayerMovementContext
     {
-        public const uint Rotation = 0x88; // to Vector2
+        public const uint Rotation = 0x90; // to Vector2
     }
 
     public struct PlayerSettings
@@ -464,6 +464,7 @@
         public const uint StateSpeedLimit = 0x308; // [308] <StateSpeedLimit>k__BackingField : Single
         public const uint StateSprintSpeedLimit = 0x30C; // [30C] <StateSprintSpeedLimit>k__BackingField : Single
         public const uint Rotation = 0x408; // [408] _myRotation : UnityEngine.Vector2
+        public const uint _Rotation = 0x27C; // [27C] _Rotation : UnityEngine.Vector2
     }
 
     public struct Physical

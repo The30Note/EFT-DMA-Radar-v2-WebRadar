@@ -12,7 +12,7 @@ namespace eft_dma_radar
 
         private ulong _baseMovementState;
         private ulong _handsStamina;
-        private ulong _movementContext;
+        public ulong _movementContext;
         private ulong _handsContainer;
         private ulong _physical;
         private ulong _playerBase;

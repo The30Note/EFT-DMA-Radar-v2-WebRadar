@@ -57,6 +57,14 @@ namespace eft_dma_radar
         /// </summary>
         public PlayerType Type { get; set; }
         /// <summary>
+        /// Player's Bullet Information.
+        /// </summary>
+        public float bullet_speed { get; set; }
+        public float ballistic_coeff { get; set; }
+        public float bullet_mass { get; set; }
+        public float bullet_diam { get; set; }
+        public float bullet_velocity { get; set; }
+        /// <summary>
         /// Player's current health (sum of all 7 body parts).
         /// </summary>
         public int Health { get; private set; } = -1;
@@ -401,32 +409,52 @@ namespace eft_dma_radar
             }
         }
 
-         #region Aimbot
+    #region Aimbot
+        public bool SetAmmo()
+        {
+            try
+            {
+                var ammo_template = Memory.ReadPtrChain(this.Base, [Offsets.Player.HandsController, 0x60, 0x40, 0x190]);//[190] _defAmmoTemplate : EFT.InventoryLogic.AmmoTemplate
 
-        // Aimbot
+                if (ammo_template != 0)
+                {
+                    this.bullet_speed = Memory.ReadValue<float>(ammo_template + 0x1BC);//EFT.InventoryLogic.AmmoTemplate->InitialSpeed : Single
+                    this.ballistic_coeff = Memory.ReadValue<float>(ammo_template + 0x1D0);//EFT.InventoryLogic.AmmoTemplate->BallisticCoeficient : Single
+                    this.bullet_mass = Memory.ReadValue<float>(ammo_template + 0x258);//EFT.InventoryLogic.AmmoTemplate->BulletMassGram : Single
+                    this.bullet_diam = Memory.ReadValue<float>(ammo_template + 0x25C);//EFT.InventoryLogic.AmmoTemplate->BulletDiameterMilimeters : Single
+                    this.bullet_velocity = Memory.ReadValue<float>(ammo_template + 0x1BC);//EFT.InventoryLogic.AmmoTemplate->BulletDiameterMilimeters : Single
+                    
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"ERROR getting Player '{this.Name}' Ammo: {ex}");
+                return false;
+            }
+        }
+
         public void SetRotationFr(Vector2 brainrot)
         {
             if (!this.IsLocalPlayer || !this.IsAlive || this.MovementContext == 0)
             {
                 return;
+
             }
-            Vector2 currentmemory = GetRotationFr();
-            Program.Log($"Current Rotation in mem: {currentmemory} Writing to memory: {brainrot}");
-            //Memory.WriteValue(this.isOfflinePlayer ? this.MovementContext + Offsets.MovementContext.Rotation : this.MovementContext + Offsets.ObservedPlayerMovementContext.Rotation, brainrot);
-            Memory.WriteValue<Vector2>(this.MovementContext + (this.isOfflinePlayer ?  Offsets.MovementContext.Rotation : Offsets.ObservedPlayerMovementContext.Rotation), brainrot);
-            Program.Log($"Write Succesful, current Roation: {currentmemory} ");
+            Memory.WriteValue<Vector2>(this.MovementContext + Offsets.MovementContext._Rotation, brainrot);
         }
-        // Aimbot
+
         public Vector2 GetRotationFr()
         {
             if (!this.IsLocalPlayer || !this.IsAlive || this.MovementContext == 0)
             {
                 return new Vector2();
             }
+
             return Memory.ReadValue<Vector2>(this.isOfflinePlayer ? this.MovementContext + Offsets.MovementContext.Rotation : this.MovementContext + Offsets.ObservedPlayerMovementContext.Rotation);
         }
 
-        #endregion
+    #endregion
 
         /// <summary>
         /// Set player rotation (Direction/Pitch)

@@ -16,6 +16,9 @@ namespace eft_dma_radar
         [JsonPropertyName("aimbotKeybind")]
         public int AimbotKeybind { get; set; }
 
+        [JsonPropertyName("silentAimKey")]
+        public int SilentAimKey { get; set; }
+
         [JsonPropertyName("aimbotSmoothness")]
         public int AimbotSmoothness { get; set; }
 
@@ -42,11 +45,40 @@ namespace eft_dma_radar
 
         [JsonPropertyName("aimbotClosest")]
         public bool AimbotClosest { get; set; }
+        
+        [JsonPropertyName("saaimbotFOV")]
+        public int SAAimbotFOV { get; set; }
 
-        [JsonPropertyName("enablePMC")]
-        public bool EnablePMC { get; set; }
+        [JsonPropertyName("saaimbotMaxDistance")]
+        public int SAAimbotMaxDistance { get; set; }
 
-        [JsonPropertyName("enableTargetScavs")]
+        [JsonPropertyName("sasilentAimKey")]
+        public int SASilentAimKey { get; set; }
+
+        [JsonPropertyName("saaimbotHead")]
+        public bool SAAimbotHead { get; set; }
+
+        [JsonPropertyName("saaimbotNeck")]
+        public bool SAAimbotNeck { get; set; }
+
+        [JsonPropertyName("saaimbotChest")]
+        public bool SAAimbotChest { get; set; }
+
+        [JsonPropertyName("saaimbotPelvis")]
+        public bool SAAimbotPelvis { get; set; }
+
+        [JsonPropertyName("saaimbotRightLeg")]
+        public bool SAAimbotRightLeg { get; set; }
+
+        [JsonPropertyName("saaimbotLeftLeg")]
+        public bool SAAimbotLeftLeg { get; set; }
+
+        [JsonPropertyName("saenableAimbot")]
+        public bool SAEnableAimbot { get; set; }
+
+        [JsonPropertyName("saaimbotClosest")]
+        public bool SAAimbotClosest { get; set; }
+
         public bool EnableTargetScavs { get; set; } 
 
         [JsonPropertyName("hostname")]
@@ -569,6 +601,7 @@ namespace eft_dma_radar
             AimbotFOV = 30;
             AimbotMaxDistance = 200;
             AimbotKeybind = 0x05; // Example: Mouse button 5
+            SilentAimKey = 0x06;
             AimbotSmoothness = 100;
             AimbotHead = false;  // Enable aiming at the head
             AimbotNeck = false; // Disable aiming at the neck
@@ -578,8 +611,17 @@ namespace eft_dma_radar
             AimbotLeftLeg = false; // Disable aiming at the left leg
             EnableAimbot = false; // Enable the aimbot feature
             AimbotClosest = false;
-            EnablePMC = false; // Enable aiming at PMC targets
-            EnableTargetScavs = false; // Enable aiming at SCAV targets
+            SAAimbotFOV = 30;
+            SAAimbotMaxDistance = 200;
+            SASilentAimKey = 0x06;
+            SAAimbotHead = true;  // Enable aiming at the head
+            SAAimbotNeck = false; // Disable aiming at the neck
+            SAAimbotChest = false; // Enable aiming at the chest
+            SAAimbotPelvis = false; // Disable aiming at the pelvis
+            SAAimbotRightLeg = false; // Disable aiming at the right leg
+            SAAimbotLeftLeg = false; // Disable aiming at the left leg
+            SAEnableAimbot = true; // Enable the aimbot feature
+            SAAimbotClosest = false;
             Hostname = "localhost";
         }
 

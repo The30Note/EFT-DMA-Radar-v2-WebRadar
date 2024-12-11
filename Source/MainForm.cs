@@ -735,8 +735,8 @@ namespace eft_dma_radar
             sldrFontSize.Value = config.GlobalFontSize;
             swAimClosest.Checked = config.AimbotClosest;
             swEnableAimBot.Checked = config.EnableAimbot;
-            swEnablePMC.Checked = config.EnablePMC;
-            swEnableTargetScavs.Checked = config.EnableTargetScavs;
+            //swEnablePMC.Checked = config.EnablePMC;
+            //swEnableTargetScavs.Checked = config.EnableTargetScavs;
             swHeadAim.Checked = config.AimbotHead;
             swAimNeck.Checked = config.AimbotNeck;
             swAimChest.Checked = config.AimbotChest;
@@ -746,6 +746,18 @@ namespace eft_dma_radar
             sldrAimbotFOV.Value = (int)config.AimbotFOV;
             sldrAimbotSmoothness.Value = (int)config.AimbotSmoothness;
             sldrAimDistance.Value = (int)config.AimbotMaxDistance;
+
+            msSAClosest.Checked = config.SAAimbotClosest;
+            msSADistance.Value = (int)config.SAAimbotMaxDistance;
+            msSALLeg.Checked = config.SAAimbotLeftLeg;
+            msSAEnableSilentAim.Checked = config.SAEnableAimbot;
+            msSARLeg.Checked = config.SAAimbotRightLeg;
+            msSAPelvis.Checked = config.SAAimbotPelvis;
+            msSAChest.Checked = config.SAAimbotChest;
+            msSANeck.Checked = config.SAAimbotNeck;
+            msSAHead.Checked = config.SAAimbotHead;
+            msSAFov.Value = (int)config.SAAimbotFOV;
+            msSAKeyBind.Text = ((Keys)config.SASilentAimKey).ToString();
 
             // Global Features
             mcSettingsMemoryWritingGlobal.Enabled = this.config.MasterSwitch;
@@ -1158,6 +1170,76 @@ private enum ConsoleCtrlEvent
         }        
         #endregion
         #region General Event Handlers
+        private void msSAEnableSilentAim_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAEnableAimbot = msSAEnableSilentAim.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSAClosest_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotClosest = msSAClosest.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSAHead_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotHead = msSAHead.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSANeck_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotNeck = msSANeck.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSAChest_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotChest = msSAChest.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSAPelvis_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotPelvis = msSAPelvis.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSARLeg_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotRightLeg = msSARLeg.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSALLeg_CheckedChanged(object sender, EventArgs e)
+        {
+            config.SAAimbotLeftLeg = msSALLeg.Checked;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSAFov_onValueChanged(object sender,  int newValue)
+        {
+            config.SAAimbotFOV = msSAFov.Value;
+            Config.SaveConfig(config);
+
+        }
+
+        private void msSADistance_onValueChanged(object sender,  int newValue)
+        {
+            config.SAAimbotMaxDistance = msSADistance.Value;
+            Config.SaveConfig(config);
+
+        }
+
         private void swEnableAimBot_CheckedChanged(object sender, EventArgs e)
         {
             config.EnableAimbot = swEnableAimBot.Checked;
@@ -1172,18 +1254,20 @@ private enum ConsoleCtrlEvent
 
         }
 
-        private void swEnablePMC_CheckedChanged(object sender, EventArgs e)
+        private void msSAKeyBind_MouseClick(object sender, MouseEventArgs e)
         {
-            config.EnablePMC = swEnablePMC.Checked;
-            Config.SaveConfig(config);
-
+            msSAKeyBind.Text = "Press any key or mouse button...";
+            this.KeyPreview = true;
+            this.KeyDown += SAMainForm_KeyDown;
+            this.MouseDown += SAMainForm_MouseDown; // Subscribe to MouseDown event
         }
 
-        private void swEnableTargetScavs_CheckedChanged(object sender, EventArgs e)
+        private void SAMainForm_KeyDown(object sender, KeyEventArgs e)
         {
-            config.EnableTargetScavs = swEnableTargetScavs.Checked;
-            Config.SaveConfig(config);
-
+            msSAKeyBind.Text = e.KeyCode.ToString();
+            config.SASilentAimKey = (int)e.KeyCode; // Save the keycode in your config
+            this.KeyDown -= SAMainForm_KeyDown; // Unsubscribe from the event
+            this.MouseDown -= SAMainForm_MouseDown; // Unsubscribe from MouseDown event
         }
 
         private void swHeadAim_CheckedChanged(object sender, EventArgs e)
@@ -1263,6 +1347,31 @@ private enum ConsoleCtrlEvent
             this.KeyDown -= MainForm_KeyDown; // Unsubscribe from the event
             this.MouseDown -= MainForm_MouseDown; // Unsubscribe from MouseDown event
         }
+
+        private void SAMainForm_MouseDown(object sender, MouseEventArgs e)
+        {
+            string mouseButton;
+            int mouseButtonCode;
+
+            switch (e.Button)
+            {
+                case MouseButtons.XButton1:
+                    mouseButton = "Mouse4";
+                    mouseButtonCode = 0x05; // Virtual key code for Mouse4
+                    break;
+                case MouseButtons.XButton2:
+                    mouseButton = "Mouse5";
+                    mouseButtonCode = 0x06; // Virtual key code for Mouse5
+                    break;
+                default:
+                    return;
+            }
+
+            msSAKeyBind.Text = mouseButton;
+            config.SASilentAimKey = mouseButtonCode; // Save the mouse button code in your config
+            this.KeyDown -= SAMainForm_KeyDown; // Unsubscribe from the event
+            this.MouseDown -= SAMainForm_MouseDown; // Unsubscribe from MouseDown event
+        } 
 
         private void MainForm_MouseDown(object sender, MouseEventArgs e)
         {
@@ -1477,8 +1586,8 @@ private enum ConsoleCtrlEvent
 
             // Update the switch controls
             swEnableAimBot.Checked = config.EnableAimbot;
-            swEnablePMC.Checked = config.EnablePMC;
-            swEnableTargetScavs.Checked = config.EnableTargetScavs;
+            //swEnablePMC.Checked = config.EnablePMC;
+            //swEnableTargetScavs.Checked = config.EnableTargetScavs;
 
             swHeadAim.Checked = config.AimbotHead;
             swAimNeck.Checked = config.AimbotNeck;
@@ -1496,8 +1605,8 @@ private enum ConsoleCtrlEvent
             // Example: If enabling the aimbot should disable other controls, you can do that here
             bool isAimbotEnabled = config.EnableAimbot;
 
-            swEnablePMC.Enabled = isAimbotEnabled;
-            swEnableTargetScavs.Enabled = isAimbotEnabled;
+            //swEnablePMC.Enabled = isAimbotEnabled;
+            //swEnableTargetScavs.Enabled = isAimbotEnabled;
             swHeadAim.Enabled = isAimbotEnabled;
             swAimNeck.Enabled = isAimbotEnabled;
             swAimChest.Enabled = isAimbotEnabled;
@@ -1513,8 +1622,8 @@ private enum ConsoleCtrlEvent
         private void BindAimbotControlEvents()
         {
             swEnableAimBot.CheckedChanged += (sender, e) => config.EnableAimbot = swEnableAimBot.Checked;
-            swEnablePMC.CheckedChanged += (sender, e) => config.EnablePMC = swEnablePMC.Checked;
-            swEnableTargetScavs.CheckedChanged += (sender, e) => config.EnableTargetScavs = swEnableTargetScavs.Checked;
+            //swEnablePMC.CheckedChanged += (sender, e) => config.EnablePMC = swEnablePMC.Checked;
+            //swEnableTargetScavs.CheckedChanged += (sender, e) => config.EnableTargetScavs = swEnableTargetScavs.Checked;
 
             swHeadAim.CheckedChanged += (sender, e) => config.AimbotHead = swHeadAim.Checked;
             swAimNeck.CheckedChanged += (sender, e) => config.AimbotNeck = swAimNeck.Checked;
