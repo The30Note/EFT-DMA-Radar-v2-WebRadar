@@ -408,7 +408,6 @@ namespace eft_dma_radar
                 return false;
             }
         }
-
     #region Aimbot
         public bool SetAmmo()
         {
@@ -455,7 +454,6 @@ namespace eft_dma_radar
         }
 
     #endregion
-
         /// <summary>
         /// Set player rotation (Direction/Pitch)
         /// </summary>
@@ -789,11 +787,12 @@ namespace eft_dma_radar
             this.InventorySlots = inventorySlots;
             this._gearManager = new GearManager(this.InventorySlots);
             this.TransformInternal = transformInternal;
-            this._transform = new Transform(this.TransformInternal, true);
             this.PlayerBody = playerBody;
             this.Name = Memory.ReadUnityString(name);
             this.Name = Helpers.TransliterateCyrillic(this.Name);
             this.PlayerSide = playerSide;
+
+            this._transform = new Transform(this.TransformInternal, true);
 
             if (groupID != 0)
             {
@@ -814,7 +813,7 @@ namespace eft_dma_radar
         /// </summary>
         private void SetupBones()
         {
-            var boneMatrix = Memory.ReadPtrChain(this.PlayerBody, [0x28, 0x28, 0x10]);
+            var boneMatrix = Memory.ReadPtrChain(this.PlayerBody, [0x30, 0x30, 0x10]);
 
             foreach (var bone in RequiredBones)
             {

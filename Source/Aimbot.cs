@@ -778,7 +778,7 @@ namespace eft_dma_radar
                 return new Vector3();
             }
 
-            var boneMatrix = Memory.ReadPtrChain(player.PlayerBody, [0x28, 0x28, 0x10]);
+            var boneMatrix = Memory.ReadPtrChain(player.PlayerBody, [0x30, 0x30, 0x10]);
             var pointer = Memory.ReadPtrChain(boneMatrix, [0x20 + ((uint)bone * 0x8), 0x10]);
             Transform boneTransform = new Transform(pointer, false);
             return boneTransform.GetPosition();
