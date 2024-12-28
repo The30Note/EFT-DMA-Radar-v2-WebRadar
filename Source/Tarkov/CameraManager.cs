@@ -87,7 +87,7 @@ public void GetViewMatrix()
         return;
     }
 
-    ulong viewMatrixAddr = tempMatrixPtr + 0xDC;
+    ulong viewMatrixAddr = tempMatrixPtr + 0x100;
     this._viewMatrik = Memory.ReadValue<Matrik>(viewMatrixAddr);
 
     //Program.Log($"ViewMatrix Retrieved: {this._viewMatrik}");

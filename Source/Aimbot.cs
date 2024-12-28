@@ -683,6 +683,7 @@ namespace eft_dma_radar
             ulong handscontainer = Memory.ReadPtrChain(playamanaga._proceduralWeaponAnimation, new uint[] { ProceduralWeaponAnimation.FirearmContoller, FirearmController.Fireport, Fireport.To_TransfromInternal[0], Fireport.To_TransfromInternal[1] });
             Transform tranny = new Transform(handscontainer);
             Vector3 goofy = tranny.GetPosition();
+            
             return new Vector3(goofy.X, goofy.Z, goofy.Y);
         }
 
@@ -728,7 +729,7 @@ namespace eft_dma_radar
                 return new Vector3();
             }
 
-            var boneMatrix = Memory.ReadPtrChain(player.PlayerBody, [0x28, 0x28, 0x10]);
+            var boneMatrix = Memory.ReadPtrChain(player.PlayerBody, [0x30, 0x30, 0x10]);
             var pointer = Memory.ReadPtrChain(boneMatrix, [0x20 + ((uint)PlayerBones.HumanHead * 0x8), 0x10]);
             Transform headTranny = new Transform(pointer, false);
             return headTranny.GetPosition();
@@ -829,7 +830,7 @@ namespace eft_dma_radar
                 );
 
                 // Write the new gun angles to memory
-                Memory.WriteValue(playamanaga._proceduralWeaponAnimation + 0x224, new Vector3(gunAngle.X, -1.0f, gunAngle.Z * -1.0f));
+                Memory.WriteValue(playamanaga._proceduralWeaponAnimation + 0x22C, new Vector3(gunAngle.X, -1.0f, gunAngle.Z * -1.0f));
             }
 
             private static Vector2 NormalizeAngle(Vector2 angle)
@@ -880,6 +881,7 @@ namespace eft_dma_radar
                     {
                         this._cameraManager.GetViewmatrixAsync();
                         Vector3 cameraPos = GetFireportPos();
+                        
         
                         if (silentAimHeld)
                         {
@@ -893,6 +895,8 @@ namespace eft_dma_radar
                                 {
                                     SilentAim.ApplySilentAim(cameraPos, targetPos.Value);
                                     udPlayer = silentAimTarget; // Lock onto the silent aim target
+                        
+                                        //Program.Log($"cameraPos cords are: {cameraPos} and udplayer: {udPlayer}");
                                 }
                             }
                         }
@@ -910,6 +914,8 @@ namespace eft_dma_radar
                                     if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
                                     {
                                         LocalPlayer.SetRotationFr(ang);
+                        
+                                        //Program.Log($"cameraPos cords are: {cameraPos} and angle is: {ang}");
                                     }
                                 }
                             }
@@ -930,6 +936,8 @@ namespace eft_dma_radar
                                     {
                                         LocalPlayer.SetRotationFr(ang);
                                         udPlayer = aimbotTarget; // Lock onto the aimbot target
+                        
+                                        //Program.Log($"cameraPos cords are: {cameraPos} and angle is: {ang}");
                                     }
                                 }
                             }
