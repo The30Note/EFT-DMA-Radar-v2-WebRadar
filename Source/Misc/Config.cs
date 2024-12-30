@@ -614,13 +614,13 @@ namespace eft_dma_radar
             SAAimbotFOV = 30;
             SAAimbotMaxDistance = 200;
             SASilentAimKey = 0x06;
-            SAAimbotHead = true;  // Enable aiming at the head
+            SAAimbotHead = false;  // Enable aiming at the head
             SAAimbotNeck = false; // Disable aiming at the neck
             SAAimbotChest = false; // Enable aiming at the chest
             SAAimbotPelvis = false; // Disable aiming at the pelvis
             SAAimbotRightLeg = false; // Disable aiming at the right leg
             SAAimbotLeftLeg = false; // Disable aiming at the left leg
-            SAEnableAimbot = true; // Enable the aimbot feature
+            SAEnableAimbot = false; // Enable the aimbot feature
             SAAimbotClosest = false;
             Hostname = "localhost";
         }
