@@ -99,11 +99,7 @@ namespace eft_dma_radar
 
         private List<ItemAnimation> activeItemAnimations = new List<ItemAnimation>();
         private LootItem itemToPing = null;
-        //WebRadar
-        private IHost _webHost;
-        //WebRadar
-        private Process _sshProcess;
-        private SshClient _sshClient;    
+
         private bool isItemPingAnimationRunning = false;
         private bool isRefreshingLootItems = false;
 
@@ -113,19 +109,24 @@ namespace eft_dma_radar
         private HashSet<Keys> previouslyPressedKeys = new HashSet<Keys>();
         private Dictionary<HotkeyAction, Action<bool>> hotkeyActions;
         private Dictionary<Keys, string> keyDisplayNames;
+        //WebRadar
+        private IHost _webHost;
+        private Process _sshProcess;
+        private SshClient _sshClient; 
+        //WebRadar        
         private readonly string[] hotkeyCboActions =
         {
             "Chams",
             "Important Loot",
-            "No Recoil",
-            "No Sway",
             "Optical Thermal",
+            "Recoil",
             "Show Containers",
             "Show Corpses",
             "Show Loot",
             "Thirdperson",
             "Thermal Vision",
             "Time Scale",
+            "Weapon Sway",
             "Zoom In",
             "Zoom Out"
         };
@@ -623,15 +624,15 @@ namespace eft_dma_radar
             {
                 { HotkeyAction.Chams, this.SetChams },
                 { HotkeyAction.ImportantLoot, this.SetImportantLootOnly },
-                { HotkeyAction.NoRecoil, this.SetNoRecoil },
-                { HotkeyAction.NoSway, this.SetNoSway },
                 { HotkeyAction.OpticalThermal, this.SetOpticalThermal },
+                { HotkeyAction.Recoil, this.SetRecoil },
                 { HotkeyAction.ShowContainers, this.SetShowContainers },
                 { HotkeyAction.ShowCorpses, this.SetShowCorpses },
                 { HotkeyAction.ShowLoot, this.SetShowLoot },
                 { HotkeyAction.Thirdperson, this.SetThirdperson },
                 { HotkeyAction.ThermalVision, this.SetThermalVision },
-                { HotkeyAction.TimeScale, this.SetTimescale }
+                { HotkeyAction.TimeScale, this.SetTimescale },
+                { HotkeyAction.WeaponSway, this.SetWeaponSway },
             };
         }
 
@@ -721,43 +722,7 @@ namespace eft_dma_radar
             #endregion
 
             #region Memory Writing
-            swMasterSwitch.Checked = config.MasterSwitch;
-
-            // Aimbot specific settings
-            swAimview.Checked = config.Aimview;
-            swExfilNames.Checked = config.ExfilNames;
-            swHoverArmor.Checked = config.HoverArmor;
-            txtTeammateID.Text = config.PrimaryTeammateId;
-            sldrZoomSensitivity.Value = config.ZoomSensitivity;
-            lblKeybind.Text = ((Keys)config.AimbotKeybind).ToString();
-            sldrUIScale.Value = config.UIScale;
-            cboGlobalFont.SelectedIndex = config.GlobalFont;
-            sldrFontSize.Value = config.GlobalFontSize;
-            swAimClosest.Checked = config.AimbotClosest;
-            swEnableAimBot.Checked = config.EnableAimbot;
-            //swEnablePMC.Checked = config.EnablePMC;
-            //swEnableTargetScavs.Checked = config.EnableTargetScavs;
-            swHeadAim.Checked = config.AimbotHead;
-            swAimNeck.Checked = config.AimbotNeck;
-            swAimChest.Checked = config.AimbotChest;
-            swAimPelvis.Checked = config.AimbotPelvis;
-            swAimRLeg.Checked = config.AimbotRightLeg;
-            swAimLLeg.Checked = config.AimbotLeftLeg;
-            sldrAimbotFOV.Value = (int)config.AimbotFOV;
-            sldrAimbotSmoothness.Value = (int)config.AimbotSmoothness;
-            sldrAimDistance.Value = (int)config.AimbotMaxDistance;
-
-            msSAClosest.Checked = config.SAAimbotClosest;
-            msSADistance.Value = (int)config.SAAimbotMaxDistance;
-            msSALLeg.Checked = config.SAAimbotLeftLeg;
-            msSAEnableSilentAim.Checked = config.SAEnableAimbot;
-            msSARLeg.Checked = config.SAAimbotRightLeg;
-            msSAPelvis.Checked = config.SAAimbotPelvis;
-            msSAChest.Checked = config.SAAimbotChest;
-            msSANeck.Checked = config.SAAimbotNeck;
-            msSAHead.Checked = config.SAAimbotHead;
-            msSAFov.Value = (int)config.SAAimbotFOV;
-            msSAKeyBind.Text = ((Keys)config.SASilentAimKey).ToString();
+            swMasterSwitch.Checked = this.config.MasterSwitch;
 
             // Global Features
             mcSettingsMemoryWritingGlobal.Enabled = this.config.MasterSwitch;
@@ -781,10 +746,17 @@ namespace eft_dma_radar
 
             // Gear Features
             mcSettingsMemoryWritingGear.Enabled = this.config.MasterSwitch;
-            swNoRecoil.Checked = this.config.NoRecoil;
-            swNoSway.Checked = this.config.NoSway;
+            swRecoil.Checked = this.config.Recoil;
+            swWeaponSway.Checked = this.config.WeaponSway;
+            sldrXFactor.Enabled = this.config.Recoil;
+            sldrXFactor.Value = (int)Math.Round(this.config.RecoilXPercent * 100);
+            sldrYFactor.Enabled = this.config.Recoil;
+            sldrYFactor.Value = (int)Math.Round(this.config.RecoilXPercent * 100);
+            sldrSwayFactor.Enabled = this.config.WeaponSway;
+            sldrSwayFactor.Value = (int)Math.Round(this.config.WeaponSwayPercent * 100);
             swInstantADS.Checked = this.config.InstantADS;
             swNoVisor.Checked = this.config.NoVisor;
+            swFrostBite.Checked = this.config.FrostBite;
             swThermalVision.Checked = this.config.ThermalVision;
             swOpticalThermal.Checked = this.config.OpticThermalVision;
             swNightVision.Checked = this.config.NightVision;
@@ -839,6 +811,42 @@ namespace eft_dma_radar
             swChamsTeammates.Checked = this.config.Chams["Teammates"];
             swChamsCorpses.Checked = this.config.Chams["Corpses"];
             swChamsRevert.Checked = this.config.Chams["RevertOnClose"];
+
+            // Aimbot specific settings
+            swAimview.Checked = config.Aimview;
+            swExfilNames.Checked = config.ExfilNames;
+            swHoverArmor.Checked = config.HoverArmor;
+            txtTeammateID.Text = config.PrimaryTeammateId;
+            sldrZoomSensitivity.Value = config.ZoomSensitivity;
+            lblKeybind.Text = ((Keys)config.AimbotKeybind).ToString();
+            sldrUIScale.Value = config.UIScale;
+            cboGlobalFont.SelectedIndex = config.GlobalFont;
+            sldrFontSize.Value = config.GlobalFontSize;
+            swAimClosest.Checked = config.AimbotClosest;
+            swEnableAimBot.Checked = config.EnableAimbot;
+            //swEnablePMC.Checked = config.EnablePMC;
+            //swEnableTargetScavs.Checked = config.EnableTargetScavs;
+            swHeadAim.Checked = config.AimbotHead;
+            swAimNeck.Checked = config.AimbotNeck;
+            swAimChest.Checked = config.AimbotChest;
+            swAimPelvis.Checked = config.AimbotPelvis;
+            swAimRLeg.Checked = config.AimbotRightLeg;
+            swAimLLeg.Checked = config.AimbotLeftLeg;
+            sldrAimbotFOV.Value = (int)config.AimbotFOV;
+            sldrAimbotSmoothness.Value = (int)config.AimbotSmoothness;
+            sldrAimDistance.Value = (int)config.AimbotMaxDistance;
+
+            msSAClosest.Checked = config.SAAimbotClosest;
+            msSADistance.Value = (int)config.SAAimbotMaxDistance;
+            msSALLeg.Checked = config.SAAimbotLeftLeg;
+            msSAEnableSilentAim.Checked = config.SAEnableAimbot;
+            msSARLeg.Checked = config.SAAimbotRightLeg;
+            msSAPelvis.Checked = config.SAAimbotPelvis;
+            msSAChest.Checked = config.SAAimbotChest;
+            msSANeck.Checked = config.SAAimbotNeck;
+            msSAHead.Checked = config.SAAimbotHead;
+            msSAFov.Value = (int)config.SAAimbotFOV;
+            msSAKeyBind.Text = ((Keys)config.SASilentAimKey).ToString();
 
             this.ToggleChamsControls();
             #endregion
@@ -915,228 +923,228 @@ namespace eft_dma_radar
         }
         #endregion
         #region WebRadar
-private void swStartWebServer_CheckedChanged(object sender, EventArgs e)
-{
-    Program.Log($"Switch CheckedChanged event fired. Checked: {swStartWebServer.Checked}");
-    if (swStartWebServer.Checked)
-    {
-        // Start the server
-        Program.Log("[WebRadar] Attempting to start the web server...");
-        StartWebServer();
-    }
-    else
-    {
-        // Stop the server
-        Program.Log("[WebRadar] Attempting to stop the web server...");
-        StopWebServer();
-    }
-}
-private void swGetLink_CheckedChanged(object sender, EventArgs e)
-{
-    Program.Log($"Switch CheckedChanged event fired. Checked: {swGetLink.Checked}");
-    if (swStartWebServer.Checked)
-    {
-        // Start the server
-        Program.Log("[WebRadar] Attempting to proxy your webserver...");
-        ExecuteSshTunnel();
-    }
-    else
-    {
-        // Stop the server
-        Program.Log("[WebRadar] Attempting to stop proxy of your webserver...");
-        StopSshTunnel();
-    }
-}
-
-private void StartWebServer()
-{
-    if (_webHost == null)
-    {
-        try
+        private void swStartWebServer_CheckedChanged(object sender, EventArgs e)
         {
-            _webHost = Program.CreateHostBuilder(null).Build();
-            var serverTask = new Task(() =>
+            Program.Log($"Switch CheckedChanged event fired. Checked: {swStartWebServer.Checked}");
+            if (swStartWebServer.Checked)
             {
-                _webHost.Run();
-            });
-            serverTask.Start();
-            Program.Log("Web server started.");
-        }
-        catch (Exception ex)
-        {
-            Program.Log($"Error starting web server: {ex.Message}");
-        }
-    }
-}
-
-private void ExecuteSshTunnel()
-{
-    Task.Run(() =>
-    {
-        try
-        {
-            string sshCommand = "ssh -o StrictHostKeyChecking=no -p 2222 -R 8080:localhost:8080 anonymous@fd-mambo.org";
-            Program.Log("[WebRadar] Starting SSH tunnel with command: " + sshCommand);
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/K {sshCommand}", // Use /K to keep the console open
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false, // Must be false to capture output
-                CreateNoWindow = false // Show the window
-            };
-
-            _sshProcess = new Process { StartInfo = startInfo };
-            _sshProcess.OutputDataReceived += (sender, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                {
-                    Program.Log(e.Data);
-
-                    if (e.Data.Contains("Your subdomain is:"))
-                    {
-                        var link = ExtractPublicHostname(e.Data);
-                        Invoke(new Action(() => DisplayLinkInGui(link)));
-                    }
-                }
-            };
-
-            _sshProcess.ErrorDataReceived += (sender, e) => Program.Log("ERROR: " + e.Data);
-
-            _sshProcess.Start();
-            _sshProcess.BeginOutputReadLine();
-            _sshProcess.BeginErrorReadLine();
-
-            Program.Log("SSH tunnel started.");
-            _sshProcess.WaitForExit();
-        }
-        catch (Exception ex)
-        {
-            Program.Log($"[WebRadar] Error executing SSH tunnel: {ex.Message}");
-        }
-    });
-}
-
-private void DisplayLinkInGui(string link)
-{
-    PublicHostname.Text = link;
-    hostnameTextBox.Text = link;
-
-            // Update the Config object with the new hostname
-            config.Hostname = hostnameTextBox.Text;
-            Program.Log("Hostname set to: " + config.Hostname); // Debug line
-
-            // Save the Config object to the configuration file
-            Config.SaveConfig(config);    
-}
-
-private string ExtractPublicHostname(string sshOutput)
-{
-    // Match the hostname without the "http://" prefix
-    var match = Regex.Match(sshOutput, @"Your subdomain is:\s*http://(\S+)");
-    
-    // Return the extracted hostname if successful, otherwise return an error message
-    return match.Success ? match.Groups[1].Value : "[WebRadar] Hostname not found";
-}
-
-private async void StopWebServer()
-{
-    if (_webHost != null)
-    {
-        try
-        {
-            await _webHost.StopAsync(); // Use await instead of .Wait() to avoid blocking the UI thread
-            _webHost.Dispose();
-            _webHost = null;
-            Program.Log("[WebRadar] Web server stopped.");
-            
-        }
-        catch (Exception ex)
-        {
-            Program.Log($"[WebRadar] Error stopping web server: {ex.Message}");
-        }
-    }
-}
-
-private void StopSshTunnel()
-{
-    try
-    {
-        if (_sshProcess != null && !_sshProcess.HasExited)
-        {
-            Program.Log("[WebRadar] Attempting to close the SSH tunnel...");
-
-            _sshProcess.Kill(); // Close the CMD window, which will also stop the SSH tunnel
-
-            _sshProcess.Dispose();
-            _sshProcess = null;
-            Program.Log("[WebRadar] SSH tunnel stopped.");
-        }
-    }
-    catch (Exception ex)
-    {
-        Program.Log($"[WebRadar] Error stopping SSH tunnel: {ex.Message}");
-    }
-}
-private void GenerateCtrlC(Process process)
-{
-    if (process != null && !process.HasExited)
-    {
-        try
-        {
-            // Attempt to attach to the process's console
-            if (AttachConsole((uint)process.Id))
-            {
-                Program.Log($"Successfully attached to the console of process {process.Id}");
-
-                SetConsoleCtrlHandler(null, true);  // Disable Ctrl+C handling in the current process
-                if (GenerateConsoleCtrlEvent(ConsoleCtrlEvent.CTRL_C, 0))
-                {
-                    Program.Log("Ctrl+C event sent successfully.");
-                }
-                else
-                {
-                    Program.Log("Failed to send Ctrl+C event.");
-                }
-                FreeConsole();  // Detach from the console
-                SetConsoleCtrlHandler(null, false); // Re-enable Ctrl+C handling
+                // Start the server
+                Program.Log("[WebRadar] Attempting to start the web server...");
+                StartWebServer();
             }
             else
             {
-                Program.Log($"Failed to attach to the console of process {process.Id}");
+                // Stop the server
+                Program.Log("[WebRadar] Attempting to stop the web server...");
+                StopWebServer();
             }
         }
-        catch (Exception ex)
+        private void swGetLink_CheckedChanged(object sender, EventArgs e)
         {
-            Program.Log($"Failed to send Ctrl+C to SSH process: {ex.Message}");
+            Program.Log($"Switch CheckedChanged event fired. Checked: {swGetLink.Checked}");
+            if (swStartWebServer.Checked)
+            {
+                // Start the server
+                Program.Log("[WebRadar] Attempting to proxy your webserver...");
+                ExecuteSshTunnel();
+            }
+            else
+            {
+                // Stop the server
+                Program.Log("[WebRadar] Attempting to stop proxy of your webserver...");
+                StopSshTunnel();
+            }
         }
-    }
-}
 
-[DllImport("kernel32.dll", SetLastError = true)]
-private static extern bool AttachConsole(uint dwProcessId);
+        private void StartWebServer()
+        {
+            if (_webHost == null)
+            {
+                try
+                {
+                    _webHost = Program.CreateHostBuilder(null).Build();
+                    var serverTask = new Task(() =>
+                    {
+                        _webHost.Run();
+                    });
+                    serverTask.Start();
+                    Program.Log("Web server started.");
+                }
+                catch (Exception ex)
+                {
+                    Program.Log($"Error starting web server: {ex.Message}");
+                }
+            }
+        }
 
-[DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-private static extern bool FreeConsole();
+        private void ExecuteSshTunnel()
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    string sshCommand = "ssh -o StrictHostKeyChecking=no -p 2222 -R 8080:localhost:8080 anonymous@fd-mambo.org";
+                    Program.Log("[WebRadar] Starting SSH tunnel with command: " + sshCommand);
 
-[DllImport("kernel32.dll")]
-private static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate handler, bool add);
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/K {sshCommand}", // Use /K to keep the console open
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false, // Must be false to capture output
+                        CreateNoWindow = false // Show the window
+                    };
 
-private delegate bool ConsoleCtrlDelegate(ConsoleCtrlEvent sig);
+                    _sshProcess = new Process { StartInfo = startInfo };
+                    _sshProcess.OutputDataReceived += (sender, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            Program.Log(e.Data);
 
-[DllImport("kernel32.dll")]
-private static extern bool GenerateConsoleCtrlEvent(ConsoleCtrlEvent sigevent, uint dwProcessGroupId);
+                            if (e.Data.Contains("Your subdomain is:"))
+                            {
+                                var link = ExtractPublicHostname(e.Data);
+                                Invoke(new Action(() => DisplayLinkInGui(link)));
+                            }
+                        }
+                    };
 
-private enum ConsoleCtrlEvent
-{
-    CTRL_C = 0,
-    CTRL_BREAK = 1,
-    CTRL_CLOSE = 2,
-    CTRL_LOGOFF = 5,
-    CTRL_SHUTDOWN = 6
-}
+                    _sshProcess.ErrorDataReceived += (sender, e) => Program.Log("ERROR: " + e.Data);
+
+                    _sshProcess.Start();
+                    _sshProcess.BeginOutputReadLine();
+                    _sshProcess.BeginErrorReadLine();
+
+                    Program.Log("SSH tunnel started.");
+                    _sshProcess.WaitForExit();
+                }
+                catch (Exception ex)
+                {
+                    Program.Log($"[WebRadar] Error executing SSH tunnel: {ex.Message}");
+                }
+            });
+        }
+
+        private void DisplayLinkInGui(string link)
+        {
+            PublicHostname.Text = link;
+            hostnameTextBox.Text = link;
+
+                    // Update the Config object with the new hostname
+                    config.Hostname = hostnameTextBox.Text;
+                    Program.Log("Hostname set to: " + config.Hostname); // Debug line
+
+                    // Save the Config object to the configuration file
+                    Config.SaveConfig(config);    
+        }
+
+        private string ExtractPublicHostname(string sshOutput)
+        {
+            // Match the hostname without the "http://" prefix
+            var match = Regex.Match(sshOutput, @"Your subdomain is:\s*http://(\S+)");
+
+            // Return the extracted hostname if successful, otherwise return an error message
+            return match.Success ? match.Groups[1].Value : "[WebRadar] Hostname not found";
+        }
+
+        private async void StopWebServer()
+        {
+            if (_webHost != null)
+            {
+                try
+                {
+                    await _webHost.StopAsync(); // Use await instead of .Wait() to avoid blocking the UI thread
+                    _webHost.Dispose();
+                    _webHost = null;
+                    Program.Log("[WebRadar] Web server stopped.");
+
+                }
+                catch (Exception ex)
+                {
+                    Program.Log($"[WebRadar] Error stopping web server: {ex.Message}");
+                }
+            }
+        }
+
+        private void StopSshTunnel()
+        {
+            try
+            {
+                if (_sshProcess != null && !_sshProcess.HasExited)
+                {
+                    Program.Log("[WebRadar] Attempting to close the SSH tunnel...");
+
+                    _sshProcess.Kill(); // Close the CMD window, which will also stop the SSH tunnel
+
+                    _sshProcess.Dispose();
+                    _sshProcess = null;
+                    Program.Log("[WebRadar] SSH tunnel stopped.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"[WebRadar] Error stopping SSH tunnel: {ex.Message}");
+            }
+        }
+        private void GenerateCtrlC(Process process)
+        {
+            if (process != null && !process.HasExited)
+            {
+                try
+                {
+                    // Attempt to attach to the process's console
+                    if (AttachConsole((uint)process.Id))
+                    {
+                        Program.Log($"Successfully attached to the console of process {process.Id}");
+
+                        SetConsoleCtrlHandler(null, true);  // Disable Ctrl+C handling in the current process
+                        if (GenerateConsoleCtrlEvent(ConsoleCtrlEvent.CTRL_C, 0))
+                        {
+                            Program.Log("Ctrl+C event sent successfully.");
+                        }
+                        else
+                        {
+                            Program.Log("Failed to send Ctrl+C event.");
+                        }
+                        FreeConsole();  // Detach from the console
+                        SetConsoleCtrlHandler(null, false); // Re-enable Ctrl+C handling
+                    }
+                    else
+                    {
+                        Program.Log($"Failed to attach to the console of process {process.Id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Program.Log($"Failed to send Ctrl+C to SSH process: {ex.Message}");
+                }
+            }
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AttachConsole(uint dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        private static extern bool FreeConsole();
+
+        [DllImport("kernel32.dll")]
+        private static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate handler, bool add);
+
+        private delegate bool ConsoleCtrlDelegate(ConsoleCtrlEvent sig);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool GenerateConsoleCtrlEvent(ConsoleCtrlEvent sigevent, uint dwProcessGroupId);
+
+        private enum ConsoleCtrlEvent
+        {
+            CTRL_C = 0,
+            CTRL_BREAK = 1,
+            CTRL_CLOSE = 2,
+            CTRL_LOGOFF = 5,
+            CTRL_SHUTDOWN = 6
+        }
 
         private void materialSaveBtn_Click(object sender, EventArgs e)
         {
@@ -1397,7 +1405,68 @@ private enum ConsoleCtrlEvent
             this.KeyDown -= MainForm_KeyDown; // Unsubscribe from the event
             this.MouseDown -= MainForm_MouseDown; // Unsubscribe from MouseDown event
         } 
+        private void UpdateAimbotControls()
+        {
+            // Update the slider values and their corresponding labels or settings
+            sldrAimbotFOV.Value = (int)config.AimbotFOV;
+            sldrAimbotSmoothness.Value = (int)config.AimbotSmoothness;
+            sldrAimDistance.Value = (int)config.AimbotMaxDistance;
 
+            // Update the switch controls
+            swEnableAimBot.Checked = config.EnableAimbot;
+            //swEnablePMC.Checked = config.EnablePMC;
+            //swEnableTargetScavs.Checked = config.EnableTargetScavs;
+
+            swHeadAim.Checked = config.AimbotHead;
+            swAimNeck.Checked = config.AimbotNeck;
+            swAimChest.Checked = config.AimbotChest;
+            swAimPelvis.Checked = config.AimbotPelvis;
+            swAimRLeg.Checked = config.AimbotRightLeg;
+            swAimLLeg.Checked = config.AimbotLeftLeg;
+
+            // If any settings require a visual update, apply those here
+            UpdateAimbotVisuals();
+        }
+
+        private void UpdateAimbotVisuals()
+        {
+            // Example: If enabling the aimbot should disable other controls, you can do that here
+            bool isAimbotEnabled = config.EnableAimbot;
+
+            //swEnablePMC.Enabled = isAimbotEnabled;
+            //swEnableTargetScavs.Enabled = isAimbotEnabled;
+            swHeadAim.Enabled = isAimbotEnabled;
+            swAimNeck.Enabled = isAimbotEnabled;
+            swAimChest.Enabled = isAimbotEnabled;
+            swAimPelvis.Enabled = isAimbotEnabled;
+            swAimRLeg.Enabled = isAimbotEnabled;
+            swAimLLeg.Enabled = isAimbotEnabled;
+            sldrAimbotFOV.Enabled = isAimbotEnabled;
+            sldrAimbotSmoothness.Enabled = isAimbotEnabled;
+            sldrAimDistance.Enabled = isAimbotEnabled;
+        }
+
+        // Example of binding the event handlers to update the config when a control value changes
+        private void BindAimbotControlEvents()
+        {
+            swEnableAimBot.CheckedChanged += (sender, e) => config.EnableAimbot = swEnableAimBot.Checked;
+            //swEnablePMC.CheckedChanged += (sender, e) => config.EnablePMC = swEnablePMC.Checked;
+            //swEnableTargetScavs.CheckedChanged += (sender, e) => config.EnableTargetScavs = swEnableTargetScavs.Checked;
+
+            swHeadAim.CheckedChanged += (sender, e) => config.AimbotHead = swHeadAim.Checked;
+            swAimNeck.CheckedChanged += (sender, e) => config.AimbotNeck = swAimNeck.Checked;
+            swAimChest.CheckedChanged += (sender, e) => config.AimbotChest = swAimChest.Checked;
+            swAimPelvis.CheckedChanged += (sender, e) => config.AimbotPelvis = swAimPelvis.Checked;
+            swAimRLeg.CheckedChanged += (sender, e) => config.AimbotRightLeg = swAimRLeg.Checked;
+            swAimLLeg.CheckedChanged += (sender, e) => config.AimbotLeftLeg = swAimLLeg.Checked;
+
+            sldrAimbotFOV.onValueChanged += (sender, e) => config.AimbotFOV = sldrAimbotFOV.Value;
+            sldrAimbotSmoothness.onValueChanged += (sender, e) => config.AimbotSmoothness = sldrAimbotSmoothness.Value;
+            sldrAimDistance.onValueChanged += (sender, e) => config.AimbotMaxDistance = sldrAimDistance.Value;
+        }
+        #endregion
+
+        #region General Event Handlers
         private async void frmMain_Shown(object sender, EventArgs e)
         {
             while (this.mapCanvas.GRContext is null)
@@ -1577,65 +1646,6 @@ private enum ConsoleCtrlEvent
 
         #region Radar Tab
         #region Helper Functions
-        private void UpdateAimbotControls()
-        {
-            // Update the slider values and their corresponding labels or settings
-            sldrAimbotFOV.Value = (int)config.AimbotFOV;
-            sldrAimbotSmoothness.Value = (int)config.AimbotSmoothness;
-            sldrAimDistance.Value = (int)config.AimbotMaxDistance;
-
-            // Update the switch controls
-            swEnableAimBot.Checked = config.EnableAimbot;
-            //swEnablePMC.Checked = config.EnablePMC;
-            //swEnableTargetScavs.Checked = config.EnableTargetScavs;
-
-            swHeadAim.Checked = config.AimbotHead;
-            swAimNeck.Checked = config.AimbotNeck;
-            swAimChest.Checked = config.AimbotChest;
-            swAimPelvis.Checked = config.AimbotPelvis;
-            swAimRLeg.Checked = config.AimbotRightLeg;
-            swAimLLeg.Checked = config.AimbotLeftLeg;
-
-            // If any settings require a visual update, apply those here
-            UpdateAimbotVisuals();
-        }
-
-        private void UpdateAimbotVisuals()
-        {
-            // Example: If enabling the aimbot should disable other controls, you can do that here
-            bool isAimbotEnabled = config.EnableAimbot;
-
-            //swEnablePMC.Enabled = isAimbotEnabled;
-            //swEnableTargetScavs.Enabled = isAimbotEnabled;
-            swHeadAim.Enabled = isAimbotEnabled;
-            swAimNeck.Enabled = isAimbotEnabled;
-            swAimChest.Enabled = isAimbotEnabled;
-            swAimPelvis.Enabled = isAimbotEnabled;
-            swAimRLeg.Enabled = isAimbotEnabled;
-            swAimLLeg.Enabled = isAimbotEnabled;
-            sldrAimbotFOV.Enabled = isAimbotEnabled;
-            sldrAimbotSmoothness.Enabled = isAimbotEnabled;
-            sldrAimDistance.Enabled = isAimbotEnabled;
-        }
-
-        // Example of binding the event handlers to update the config when a control value changes
-        private void BindAimbotControlEvents()
-        {
-            swEnableAimBot.CheckedChanged += (sender, e) => config.EnableAimbot = swEnableAimBot.Checked;
-            //swEnablePMC.CheckedChanged += (sender, e) => config.EnablePMC = swEnablePMC.Checked;
-            //swEnableTargetScavs.CheckedChanged += (sender, e) => config.EnableTargetScavs = swEnableTargetScavs.Checked;
-
-            swHeadAim.CheckedChanged += (sender, e) => config.AimbotHead = swHeadAim.Checked;
-            swAimNeck.CheckedChanged += (sender, e) => config.AimbotNeck = swAimNeck.Checked;
-            swAimChest.CheckedChanged += (sender, e) => config.AimbotChest = swAimChest.Checked;
-            swAimPelvis.CheckedChanged += (sender, e) => config.AimbotPelvis = swAimPelvis.Checked;
-            swAimRLeg.CheckedChanged += (sender, e) => config.AimbotRightLeg = swAimRLeg.Checked;
-            swAimLLeg.CheckedChanged += (sender, e) => config.AimbotLeftLeg = swAimLLeg.Checked;
-
-            sldrAimbotFOV.onValueChanged += (sender, e) => config.AimbotFOV = sldrAimbotFOV.Value;
-            sldrAimbotSmoothness.onValueChanged += (sender, e) => config.AimbotSmoothness = sldrAimbotSmoothness.Value;
-            sldrAimDistance.onValueChanged += (sender, e) => config.AimbotMaxDistance = sldrAimDistance.Value;
-        }
         private void InvalidateMapParams()
         {
             this.lastMapParamsUpdate = DateTime.MinValue;
@@ -3700,16 +3710,16 @@ private enum ConsoleCtrlEvent
             swFilteredOnly.Checked = enabled;
         }
 
-        private void SetNoRecoil(bool enabled)
+        private void SetRecoil(bool enabled)
         {
-            this.config.NoRecoil = enabled;
-            swNoRecoil.Checked = enabled;
+            this.config.Recoil = enabled;
+            swRecoil.Checked = enabled;
         }
 
-        private void SetNoSway(bool enabled)
+        private void SetWeaponSway(bool enabled)
         {
-            this.config.NoSway = enabled;
-            swNoSway.Checked = enabled;
+            this.config.WeaponSway = enabled;
+            swWeaponSway.Checked = enabled;
         }
 
         private void SetOpticalThermal(bool enabled)
@@ -4119,14 +4129,37 @@ private enum ConsoleCtrlEvent
             this.config.MedInfoPanel = swMedPanel.Checked;
         }
 
-        private void swNoRecoil_CheckedChanged(object sender, EventArgs e)
+        private void swRecoil_CheckedChanged(object sender, EventArgs e)
         {
-            this.config.NoRecoil = swNoRecoil.Checked;
+            var enabled = swRecoil.Checked;
+            this.config.Recoil = enabled;
+            sldrXFactor.Enabled = enabled;
+            sldrYFactor.Enabled = enabled;
         }
 
-        private void swNoSway_CheckedChanged(object sender, EventArgs e)
+        private void swWeaponSway_CheckedChanged(object sender, EventArgs e)
         {
-            this.config.NoSway = swNoRecoil.Checked;
+            var enabled = swWeaponSway.Checked;
+            this.config.WeaponSway = enabled;
+            sldrSwayFactor.Enabled = enabled;
+        }
+
+        private void sldrXFactor_onValueChanged(object sender, int newValue)
+        {
+            var newPercent = (float)newValue / 100;
+            this.config.RecoilXPercent = newPercent;
+        }
+
+        private void sldrYFactor_onValueChanged(object sender, int newValue)
+        {
+            var newPercent = (float)newValue / 100;
+            this.config.RecoilYPercent = newPercent;
+        }
+
+        private void sldrWeaponSway_onValueChanged(object sender, int newValue)
+        {
+            var newPercent = (float)newValue / 100;
+            this.config.WeaponSwayPercent = newPercent;
         }
 
         private void swInstantADS_CheckedChanged(object sender, EventArgs e)
@@ -4137,6 +4170,11 @@ private enum ConsoleCtrlEvent
         private void swNoVisor_CheckedChanged(object sender, EventArgs e)
         {
             this.config.NoVisor = swNoVisor.Checked;
+        }
+
+        private void swFrostBite_CheckedChanged(object sender, EventArgs e)
+        {
+            this.config.FrostBite = swFrostBite.Checked;
         }
 
         private void swThermalVision_CheckedChanged(object sender, EventArgs e)

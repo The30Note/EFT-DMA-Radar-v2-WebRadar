@@ -84,7 +84,7 @@ namespace eft_dma_radar
         [JsonPropertyName("hostname")]
         public string Hostname { get; set; }   
 
-       // New properties for Aimbot END         
+       // New properties for Aimbot END          
         [JsonPropertyName("aimview")]
         public bool Aimview { get; set; }
 
@@ -117,6 +117,9 @@ namespace eft_dma_radar
 
         [JsonPropertyName("freezeTimeOfDay")]
         public bool FreezeTimeOfDay { get; set; }
+
+        [JsonPropertyName("frostBite")]
+        public bool FrostBite { get; set; }
 
         [JsonPropertyName("globalFont")]
         public int GlobalFont { get; set; }
@@ -217,12 +220,6 @@ namespace eft_dma_radar
         [JsonPropertyName("nightVision")]
         public bool NightVision { get; set; }
 
-        [JsonPropertyName("noRecoil")]
-        public bool NoRecoil { get; set; }
-
-        [JsonPropertyName("noSway")]
-        public bool NoSway { get; set; }
-
         [JsonPropertyName("noVisor")]
         public bool NoVisor { get; set; }
 
@@ -271,6 +268,15 @@ namespace eft_dma_radar
         [JsonPropertyName("radarStats")]
         public bool RadarStats { get; set; }
 
+        [JsonPropertyName("Recoil")]
+        public bool Recoil { get; set; }
+
+        [JsonPropertyName("recoilXPercent")]
+        public float RecoilXPercent { get; set; }
+
+        [JsonPropertyName("recoilYPercent")]
+        public float RecoilYPercent { get; set; }
+
         [JsonPropertyName("subItems")]
         public bool SubItems { get; set; }
 
@@ -300,6 +306,12 @@ namespace eft_dma_radar
 
         [JsonPropertyName("vsync")]
         public bool VSync { get; set; }
+
+        [JsonPropertyName("weaponSway")]
+        public bool WeaponSway { get; set; }
+
+        [JsonPropertyName("weaponSwayPercent")]
+        public float WeaponSwayPercent { get; set; }
 
         [JsonPropertyName("zoomSensitivity")]
         public int ZoomSensitivity { get; set; }
@@ -534,6 +546,7 @@ namespace eft_dma_radar
             ExtendedReachDistancePvE = 2f;
             FOV = 75;
             FreezeTimeOfDay = false;
+            FrostBite = false;
             GlobalFont = 0;
             GlobalFontSize = 13;
             Hotkeys = new List<Hotkey>();
@@ -566,9 +579,7 @@ namespace eft_dma_radar
             MinImportantLootValue = 300000;
             MinLootValue = 90000;
             MinSubItemValue = 15000;
-            NightVision = false;
-            NoRecoil = false;
-            NoSway = false;
+            NightVision = false;           
             NoVisor = false;
             NoWeaponMalfunctions = false;
             OpticThermalSetting = new ThermalSettings(1f, 0.0011f, -0.1f, 0);
@@ -586,6 +597,8 @@ namespace eft_dma_radar
             QuestTaskRefresh = false;
             QuestTaskRefreshDelay = 15;
             RadarStats = false;
+            RecoilXPercent = 1f;
+            RecoilYPercent = 1f;
             SubItems = false;
             ThermalVision = false;
             Thirdperson = false;
@@ -596,6 +609,8 @@ namespace eft_dma_radar
             UIScale = 100;
             UnknownQuestItems = false;
             VSync = true;
+            WeaponSway = false;
+            WeaponSwayPercent = 1f;
             ZoomSensitivity = 25;
             //Web+Aimbot
             AimbotFOV = 30;
@@ -677,8 +692,8 @@ namespace eft_dma_radar
             {
                 "Chams" => this.Chams["Enabled"],
                 "Important Loot" => this.ImportantLootOnly,
-                "No Recoil" => this.NoRecoil,
-                "No Sway" => this.NoSway,
+                "No Recoil" => this.Recoil,
+                "No Sway" => this.WeaponSway,
                 "Optical Thermal" => this.OpticThermalVision,
                 "Show Containers" => this.LootContainerSettings["Enabled"],
                 "Show Corpses" => this.LootCorpses,
