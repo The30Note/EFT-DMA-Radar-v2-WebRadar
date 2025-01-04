@@ -673,19 +673,6 @@ namespace eft_dma_radar
         {
             get => Memory.LocalPlayer;
         }
-        public Vector3 GetFireportPos()
-        {
-            if (!this.InGame || Memory.InHideout)
-            {
-                MessageBox.Show("Not in game");
-                return new Vector3();
-            }
-            ulong handscontainer = Memory.ReadPtrChain(playamanaga._proceduralWeaponAnimation, new uint[] { ProceduralWeaponAnimation.FirearmContoller, FirearmController.Fireport, Fireport.To_TransfromInternal[0], Fireport.To_TransfromInternal[1] });
-            Transform tranny = new Transform(handscontainer);
-            Vector3 goofy = tranny.GetPosition();
-            
-            return new Vector3(goofy.X, goofy.Z, goofy.Y);
-        }
 
         private float D3DXVec3Dot(Vector3 a, Vector3 b)
         {
@@ -849,6 +836,11 @@ namespace eft_dma_radar
         }
 
         // Updated AimerBotter to use GetBoneScr for targeting multiple bones
+        private bool isConfigModified = false; // Tracks if the config has been modified
+        private float originalRecoilX = 1f;
+        private float originalRecoilY = 1f;
+        private float originalWeaponSway = 1f;
+
         public void AimerBotter()
         {
             _aimbotFOV = _config.AimbotFOV;
@@ -857,87 +849,118 @@ namespace eft_dma_radar
             bool aimbotClosest = _config.AimbotClosest;
             bool SAaimbotClosest = _config.SAAimbotClosest;
             int SAsilentAimKey = _config.SASilentAimKey; // Silent Aim key
-        
+
+
             if (!InputHandla.done_init)
             {
                 if (keyboard.Init())
                     Program.Log("Keyboard hook initialized");
             }
-        
+
             // Check if Aimbot or Silent Aim keys are held down
             bool aimbotHeld = keyboard.IsKeyDown(_aimbotKeybind);
             bool silentAimHeld = keyboard.IsKeyDown(SAsilentAimKey);
-        
+
             try
             {
-                if (this.InGame && !Memory.InHideout && _cameraManager != null)
-                {
-                    // Filter active and alive players within max distance
-                    var players = this.AllPlayers?.Select(x => x.Value)
-                        .Where(x => x.IsActive && x.IsAlive && Vector3.Distance(x.Position, LocalPlayer.Position) < _config.AimbotMaxDistance)
-                        .ToList();
-        
-                    if (players != null && players.Any())
+                    if (this.InGame && !Memory.InHideout && _cameraManager != null)
                     {
-                        this._cameraManager.GetViewmatrixAsync();
-                        Vector3 cameraPos = GetFireportPos();
-                        
-        
-                        if (silentAimHeld)
+                        if (aimbotHeld || silentAimHeld)
                         {
-                            // Silent Aim logic
-                            Player silentAimTarget = GetSABestTarget(players, cameraPos, SAaimbotClosest);
-
-                            if (silentAimTarget != null)
+                            // Store original values only once
+                            if (!isConfigModified)
                             {
-                                Vector3? targetPos = GetSAClosestBoneScr(silentAimTarget, out _);
-                                if (targetPos.HasValue)
-                                {
-                                    SilentAim.ApplySilentAim(cameraPos, targetPos.Value);
-                                    udPlayer = silentAimTarget; // Lock onto the silent aim target
-                        
-                                        //Program.Log($"cameraPos cords are: {cameraPos} and udplayer: {udPlayer}");
-                                }
+                                originalRecoilX = _config.RecoilXPercent;
+                                originalRecoilY = _config.RecoilYPercent;
+                                originalWeaponSway = _config.WeaponSwayPercent;
+                                isConfigModified = true;
                             }
-                        }
-                        if (aimbotHeld && aimbotHeld == bLastHeld && udPlayer != null && udPlayer.IsAlive && udPlayer.IsActive)
-                        {
-                            Vector3? targetPos = GetClosestBoneScr(udPlayer, out Vector2 screenPos);
-                            if (targetPos.HasValue)
-                            {
-                                Vector2 rel = new Vector2(screenPos.X - (1920f / 2f), screenPos.Y - (1080f / 2f));
-                                var distToCrosshair = Math.Sqrt((rel.X * rel.X) + (rel.Y * rel.Y));
 
-                                if (distToCrosshair < _aimbotFOV)
+                            // Set recoil and sway to zero
+                            _config.RecoilXPercent = 0f;
+                            _config.RecoilYPercent = 0f;
+                            _config.WeaponSwayPercent = 0f;
+                            //string bulletInfo = GetLocalPlayerBulletInfo();
+                            //Program.Log(bulletInfo);
+                            //Program.Log("Recoil and sway set to 0");
+                        }
+                        else if (isConfigModified)
+                        {
+                            // Set recoil and sway to zero
+                            _config.RecoilXPercent = 1f;
+                            _config.RecoilYPercent = 1f;
+                            _config.WeaponSwayPercent = 1f;
+
+                            isConfigModified = false;
+                            //Program.Log("Recoil and sway restored to default settings");
+                        }
+                    if (aimbotHeld || silentAimHeld)
+                    {
+                        // Main aimbot/silent aim logic
+                        var players = this.AllPlayers?.Select(x => x.Value)
+                            .Where(x => x.IsActive && x.IsAlive && Vector3.Distance(x.Position, LocalPlayer.Position) < _aimbotMaxDistance)
+                            .ToList();
+
+                        if (players != null && players.Any())
+                        {
+                            this._cameraManager.GetViewmatrixAsync();
+
+                            if (silentAimHeld)
+                            {
+                                Vector3 cameraPos = GetFireportPos();
+                                Player silentAimTarget = GetSABestTarget(players, cameraPos, SAaimbotClosest);
+
+                                if (silentAimTarget != null)
                                 {
-                                    Vector2 ang = CalcAngle(cameraPos, targetPos.Value);
-                                    if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
+                                    Vector3? targetPos = GetSAClosestBoneScr(silentAimTarget, out _);
+                                    if (targetPos.HasValue)
                                     {
-                                        LocalPlayer.SetRotationFr(ang);
-                        
-                                        //Program.Log($"cameraPos cords are: {cameraPos} and angle is: {ang}");
+                                        SilentAim.ApplySilentAim(cameraPos, targetPos.Value);
+                                        udPlayer = silentAimTarget; // Lock onto the silent aim target
+                                        Program.Log($"cameraPos cords are: {cameraPos} and udplayer: {silentAimTarget}");
                                     }
                                 }
                             }
-                        }
-                        else if (aimbotHeld && (aimbotHeld != bLastHeld || udPlayer == null || !udPlayer.IsAlive || !udPlayer.IsActive))
-                        {
-                            // Start searching for valid targets within FOV for standard aimbot
-                            Player aimbotTarget = GetBestTarget(players, cameraPos, aimbotClosest);
 
-                            if (aimbotTarget != null)
+                            if (aimbotHeld)
                             {
-                                Vector3? closestBone = GetClosestBoneScr(aimbotTarget, out Vector2 screenPos);
-                                if (closestBone.HasValue)
-                                {
-                                    Vector2 ang = CalcAngle(cameraPos, closestBone.Value);
+                                Vector3 cameraPos = GetFireportPos();
 
-                                    if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
+                                if (aimbotHeld == bLastHeld && udPlayer != null && udPlayer.IsAlive && udPlayer.IsActive)
+                                {
+                                    Vector3? targetPos = GetClosestBoneScr(udPlayer, out Vector2 screenPos);
+                                    if (targetPos.HasValue)
                                     {
-                                        LocalPlayer.SetRotationFr(ang);
-                                        udPlayer = aimbotTarget; // Lock onto the aimbot target
-                        
-                                        //Program.Log($"cameraPos cords are: {cameraPos} and angle is: {ang}");
+                                        Vector2 rel = new Vector2(screenPos.X - (1920f / 2f), screenPos.Y - (1080f / 2f));
+                                        var distToCrosshair = Math.Sqrt((rel.X * rel.X) + (rel.Y * rel.Y));
+
+                                        if (distToCrosshair < _aimbotFOV)
+                                        {
+                                            Vector2 ang = CalcAngle(cameraPos, targetPos.Value);
+                                            if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
+                                            {
+                                                LocalPlayer.SetRotationFr(ang);
+                                            }
+                                        }
+                                    }
+                                }
+                                else if (aimbotHeld != bLastHeld || udPlayer == null || !udPlayer.IsAlive || !udPlayer.IsActive)
+                                {
+                                    Player aimbotTarget = GetBestTarget(players, cameraPos, aimbotClosest);
+
+                                    if (aimbotTarget != null)
+                                    {
+                                        Vector3? closestBone = GetClosestBoneScr(aimbotTarget, out Vector2 screenPos);
+                                        if (closestBone.HasValue)
+                                        {
+                                            Vector2 ang = CalcAngle(cameraPos, closestBone.Value);
+
+                                            if (!float.IsNaN(ang.X) && !float.IsNaN(ang.Y))
+                                            {
+                                                LocalPlayer.SetRotationFr(ang);
+                                                udPlayer = aimbotTarget; // Lock onto the aimbot target
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -949,8 +972,43 @@ namespace eft_dma_radar
             {
                 Program.Log($"ERROR -> Aimer botter -> {ex.Message}\nStackTrace:{ex.StackTrace}");
             }
-        
+
             bLastHeld = aimbotHeld || silentAimHeld; // Update the held state for the next frame
+        }
+
+        public string GetLocalPlayerBulletInfo()
+        {
+            // Define a StringBuilder to store logs
+            StringBuilder logBuilder = new StringBuilder();
+
+                    // Read bullet information from the ammo template
+                    float bulletSpeed = LocalPlayer.bullet_speed; // InitialSpeed
+                    float ballisticCoefficient = LocalPlayer.ballistic_coeff; // BallisticCoefficient
+                    float bulletMass = LocalPlayer.bullet_mass; // BulletMassGram
+                    float bulletDiameter = LocalPlayer.bullet_diam; // BulletDiameterMillimeters
+
+                    // Log the information
+                    logBuilder.AppendLine($"Bullet Speed: {bulletSpeed} m/s");
+                    logBuilder.AppendLine($"Ballistic Coefficient: {ballisticCoefficient}");
+                    logBuilder.AppendLine($"Bullet Mass: {bulletMass} g");
+                    logBuilder.AppendLine($"Bullet Diameter: {bulletDiameter} mm");
+
+            // Return the collected logs as a string
+            return logBuilder.ToString();
+        }
+        
+        public Vector3 GetFireportPos()
+        {
+            if (!this.InGame || Memory.InHideout)
+            {
+                MessageBox.Show("Not in game");
+                return new Vector3();
+            }
+            ulong handscontainer = Memory.ReadPtrChain(playamanaga._proceduralWeaponAnimation, new uint[] { ProceduralWeaponAnimation.FirearmContoller, FirearmController.Fireport, Fireport.To_TransfromInternal[0], Fireport.To_TransfromInternal[1] });
+            Transform tranny = new Transform(handscontainer);
+            Vector3 goofy = tranny.GetPosition();
+            
+            return new Vector3(goofy.X, goofy.Z, goofy.Y);
         }
         
 private Player GetBestTarget(List<Player> players, Vector3 cameraPos, bool aimbotClosest)
