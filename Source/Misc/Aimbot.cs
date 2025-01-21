@@ -25,6 +25,7 @@ namespace eft_dma_radar
         private bool        aimbotRightLeg;
         private bool        aimbotLeftLeg;
         private int      aimbotKey;
+        //private int      aimbotKeyTest;
         private int      saAimbotKey;
         private float      aimbotPing;
         private bool        aimbotEnabled;
@@ -62,6 +63,7 @@ namespace eft_dma_radar
             aimbotRightLeg = _config.AimbotRightLeg;
             aimbotLeftLeg = _config.AimbotLeftLeg;
             aimbotKey = _config.AimbotKeybind;
+            //aimbotKeyTest = _config.AimbotKeybindTest;
             saAimbotKey = _config.SASilentAimKey;
             aimbotPing = _config.AimbotPing;
             aimbotPredictionDelay = _config.AimbotPredictionDelay;
@@ -89,6 +91,7 @@ namespace eft_dma_radar
         public void ExecuteAimbot()
         {
             bool aimbotHeld = InputManager.IsKeyDown((Keys)aimbotKey);
+            //bool aimbotHeldTest = InputManager.IsKeyDown((Keys)0x17);
             bool saAimbotHeld = InputManager.IsKeyDown((Keys)saAimbotKey);
 
             // Ensure the player is in-game and alive
@@ -140,7 +143,7 @@ namespace eft_dma_radar
                         NormalizeAngle(ref aimAngle);
                         LocalPlayer.SetRotationFr(aimAngle);
                         //Program.Log($"Aimbot: Predicted Position {predictedPosition}, AimAngle {aimAngle}");
-                    }
+                    }                 
                 }
                 if(saimbotEnabled)
                 {
@@ -157,71 +160,81 @@ namespace eft_dma_radar
                 lastBoneReadTime = DateTime.Now;
             }
         }  
-        private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelocity, Player targetPlayer)
-        {
-            // Ignore minor vertical movements if X and Z velocities are near zero
-            if (Math.Abs(targetVelocity.X) < 0.01f && Math.Abs(targetVelocity.Z) < 0.01f)
-            {
-                targetVelocity.Y = 0f;
-            }
+private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelocity, Player targetPlayer)
+{
+    // Ignore minor vertical movements if X and Z velocities are near zero
+    if (Math.Abs(targetVelocity.X) < 0.01f && Math.Abs(targetVelocity.Z) < 0.01f)
+    {
+        targetVelocity.Y = 0f;
+    }
 
-            // Calculate distance to the target
-            var localBone = new Vector3(this.LocalPlayer.Position.X, this.LocalPlayer.Position.Z, this.LocalPlayer.Position.Y);
-            float distanceToTarget = Vector3.Distance(localBone, targetPosition);
+    // Calculate distance to the target
+    var localBone = new Vector3(this.LocalPlayer.Position.X, this.LocalPlayer.Position.Z, this.LocalPlayer.Position.Y);
+    float distanceToTarget = Vector3.Distance(localBone, targetPosition);
 
-            // Adjust trajectory only if the target is beyond 60 meters
-            if (distanceToTarget > 60f)
-            {
-                var angle = (localBone.Y - targetPosition.Y) / distanceToTarget;
+    // No prediction needed for very close targets
+    if (distanceToTarget < 15f)
+    {
+        return targetPosition;  // No prediction for very close targets
+    }
 
-                // Calculate bullet drop
-                var drop = AimbotHelpers.FormTrajectory2(
-                    distanceToTarget,
-                    Vector3.Zero,
-                    new Vector3(LocalPlayer.bullet_speed, 0, 0),
-                    LocalPlayer.bullet_mass,
-                    LocalPlayer.bullet_diam,
-                    LocalPlayer.ballistic_coeff,
-                    out AimbotHelpers.GStruct267[] trajectoryInfo2
-                );
+    // Dynamically adjust bullet drop based on range
+    float dropAdjustment = 0f;
+    if (distanceToTarget > 50f)
+    {
+        var angle = (localBone.Y - targetPosition.Y) / distanceToTarget;
 
-                var dropAdjusted = drop * (float)Math.Sin(angle);
-                targetPosition.Y += drop - Math.Abs(dropAdjusted / 2);
-            }
-            if (distanceToTarget < 30f)
-            {
-                // If the target is closer than 60 meters, adjust the Y position by lowering it 20 cm (0.2 meters)
-                targetPosition.Y -= 0.4f;
-            }
+        // Calculate bullet drop
+        var drop = AimbotHelpers.FormTrajectory2(
+            distanceToTarget,
+            Vector3.Zero,
+            new Vector3(LocalPlayer.bullet_speed, 0, 0),
+            LocalPlayer.bullet_mass,
+            LocalPlayer.bullet_diam,
+            LocalPlayer.ballistic_coeff,
+            out AimbotHelpers.GStruct267[] trajectoryInfo2
+        );
 
-            // Calculate the time of flight
-            var speed = AimbotHelpers.OptimizedFormTrajectory(
-                distanceToTarget,
-                Vector3.Zero,
-                new Vector3(LocalPlayer.bullet_speed, 0, 0),
-                LocalPlayer.bullet_mass,
-                LocalPlayer.bullet_diam,
-                LocalPlayer.ballistic_coeff,
-                out AimbotHelpers.GStruct267[] trajectoryInfo
-            );
+        dropAdjustment = drop * (float)Math.Sin(angle);
+        targetPosition.Y += drop - Math.Abs(dropAdjustment / 2);
+    }
+    else
+    {
+        // Use smaller corrections for mid-range targets
+        targetPosition.Y -= 0.1f;
+    }
 
-            float gamePing = (aimbotPing / 2000.0f);
+    // Calculate the time of flight dynamically
+    var speed = AimbotHelpers.OptimizedFormTrajectory(
+        distanceToTarget,
+        Vector3.Zero,
+        new Vector3(LocalPlayer.bullet_speed, 0, 0),
+        LocalPlayer.bullet_mass,
+        LocalPlayer.bullet_diam,
+        LocalPlayer.ballistic_coeff,
+        out AimbotHelpers.GStruct267[] trajectoryInfo
+    );
 
-            // Scale prediction based on `aimbotPredictionDelay`
-            float delayScaling = Math.Clamp(aimbotPredictionDelay / 50f, 0f, 2f); // Normalize to a 0–2 scale
-            float bulletFlightTime = (speed + gamePing) * delayScaling;
+    float gamePing = (aimbotPing / 2000.0f);
+    float delayScaling = Math.Clamp(aimbotPredictionDelay / 50f, 0.3f, 1.2f);
 
-            // Predict the target's position
-            targetPosition.X += targetVelocity.X * bulletFlightTime;
-            targetPosition.Z += targetVelocity.Z * bulletFlightTime;
+    // Dynamic prediction scaling based on distance
+    float distanceScalingFactor = distanceToTarget > 50f ? 1.0f : distanceToTarget / 50f;
+    float bulletFlightTime = (speed + gamePing) * delayScaling * distanceScalingFactor;
 
-            if (distanceToTarget > 60f)
-            {
-                targetPosition.Y += targetVelocity.Y * bulletFlightTime;
-            }
+    // Predict the target's position with dynamic scaling
+    targetPosition.X += targetVelocity.X * bulletFlightTime;
+    targetPosition.Z += targetVelocity.Z * bulletFlightTime;
 
-            return targetPosition;
-        }        
+    if (distanceToTarget > 50f)
+    {
+        targetPosition.Y += targetVelocity.Y * bulletFlightTime;
+    }
+
+    return targetPosition;
+}
+
+
         private void ResetBoneCache()
         {
             boneCache = false;
