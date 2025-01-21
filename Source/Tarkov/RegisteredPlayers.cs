@@ -425,10 +425,8 @@ namespace eft_dma_radar
                         if (checkBones && player.IsActive && player.IsAlive)
                             if (player.Bones.TryGetValue(PlayerBones.HumanHead, out var bone))
                             {
-                                if (bone.InvalidBonePtr)
-                                    player.RefreshBoneTransforms(); // re-read all bone ptrs
-                                else
-                                    bone.UpdatePosition(); // update head only
+                                if (!bone.UpdatePosition()) // update head only
+                                    player.RefreshBoneTransforms();
                             }
 
                         if (checkVelocity && player.IsActive && player.IsAlive)

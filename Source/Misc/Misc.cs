@@ -274,26 +274,20 @@ namespace eft_dma_radar
                 this.Position = this._transform.GetPosition();
                 
                 if (this._errors > 0)
-                    this._errors = 0;  // Reset error counter on successful update
-                
+                    this._errors = 0;
                 return true;
             }
             catch (Exception ex)
             {
-                this._errors++;  // Increment error count on failure
-                Program.Log($"Bone failed transform.GetPosition, attempting to get new transform. Error count: {this._errors}");
-        
+                this._errors++;
+                Program.Log($"Bone failed transform.GetPosition, attempting to get new transform");
                 try
                 {
                     this._transform = new Transform(this._pointer);
                 }
-                catch (Exception innerEx)
-                {
-                    Program.Log($"Failed to create new transform: {innerEx.Message}");
-                }
-        
-                // If errors exceed threshold, trigger a bone re-read
-                if (this._errors >= 3)
+                catch { }
+
+                if (this._errors >= 5)
                 {
                     Program.Log("Too many bone failures, re-reading all bones.");
                     this._errors = 0;  // Reset error counter after triggering re-read
