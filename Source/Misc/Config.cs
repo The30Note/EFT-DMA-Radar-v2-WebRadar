@@ -48,12 +48,9 @@ namespace eft_dma_radar
 
         [JsonPropertyName("saenableAimbot")]
         public bool SAEnableAimbot { get; set; }
-
-        [JsonPropertyName("aimbotPing")]
-        public float AimbotPing { get; set; }
-
-        [JsonPropertyName("aimbotPredictionDelay")]
-        public float AimbotPredictionDelay { get; set; }
+        
+        [JsonPropertyName("aimbotPrediction")]
+        public bool AimbotPrediction { get; set; }
 
         [JsonPropertyName("hostname")]
         public string Hostname { get; set; }   
@@ -620,8 +617,7 @@ namespace eft_dma_radar
             AimbotLeftLeg = false; // Disable aiming at the left leg
             EnableAimbot = false; // Enable the aimbot feature
             SAEnableAimbot = false; // Enable the aimbot feature
-            AimbotPing  = 10;
-            AimbotPredictionDelay = 40;
+            AimbotPrediction = false;
             Hostname = "localhost";            
         }
 

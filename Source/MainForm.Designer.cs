@@ -61,8 +61,6 @@
             btnPingSelectedItem = new MaterialSkin.Controls.MaterialButton();
             txtLootItemFilter = new MaterialSkin.Controls.MaterialTextBox2();
             btnToggleLootItemViewer = new MaterialSkin.Controls.MaterialButton();
-            sldrAimPing = new MaterialSkin.Controls.MaterialSlider();
-            sldrAimPrediction = new MaterialSkin.Controls.MaterialSlider();
             swAimClosest = new MaterialSkin.Controls.MaterialSwitch();
             msSAEnableSilentAim = new MaterialSkin.Controls.MaterialSwitch();
             sldrAimDistance = new MaterialSkin.Controls.MaterialSlider();
@@ -521,6 +519,7 @@
             materialCard3 = new MaterialSkin.Controls.MaterialCard();
             lblWebRadar = new MaterialSkin.Controls.MaterialLabel();
             materialCard2 = new MaterialSkin.Controls.MaterialCard();
+            txtBonesInfo = new MaterialSkin.Controls.MaterialMaskedTextBox();
             lblAimPrediction = new MaterialSkin.Controls.MaterialLabel();
             lblSAKeyBind = new MaterialSkin.Controls.MaterialLabel();
             lblAimbotKey = new MaterialSkin.Controls.MaterialLabel();
@@ -529,7 +528,7 @@
             lblAimbotGlobal = new MaterialSkin.Controls.MaterialLabel();
             lblKeybind = new MaterialSkin.Controls.MaterialLabel();
             iconList = new ImageList(components);
-            txtBonesInfo = new MaterialSkin.Controls.MaterialMaskedTextBox();
+            swAimEnablePred = new MaterialSkin.Controls.MaterialSwitch();
             tabMambo.SuspendLayout();
             tabRadar.SuspendLayout();
             mcRadarLootItemViewer.SuspendLayout();
@@ -1331,39 +1330,6 @@
             btnToggleLootItemViewer.UseVisualStyleBackColor = true;
             btnToggleLootItemViewer.Click += btnToggleLootItemViewer_Click;
             // 
-            // sldrAimPing
-            // 
-            sldrAimPing.Depth = 0;
-            sldrAimPing.ForeColor = Color.Black;
-            sldrAimPing.Location = new Point(410, 499);
-            sldrAimPing.MouseState = MaterialSkin.MouseState.HOVER;
-            sldrAimPing.Name = "sldrAimPing";
-            sldrAimPing.RangeMax = 300;
-            sldrAimPing.RangeMin = 1;
-            sldrAimPing.Size = new Size(238, 40);
-            sldrAimPing.TabIndex = 59;
-            sldrAimPing.Text = "Ping m/s";
-            toolTip.SetToolTip(sldrAimPing, "Aimbot Smoothness");
-            sldrAimPing.UseAccentColor = true;
-            sldrAimPing.ValueMax = 300;
-            sldrAimPing.onValueChanged += sldrAimPing_onValueChanged;
-            // 
-            // sldrAimPrediction
-            // 
-            sldrAimPrediction.Depth = 0;
-            sldrAimPrediction.ForeColor = Color.Black;
-            sldrAimPrediction.Location = new Point(410, 450);
-            sldrAimPrediction.MouseState = MaterialSkin.MouseState.HOVER;
-            sldrAimPrediction.Name = "sldrAimPrediction";
-            sldrAimPrediction.RangeMin = 1;
-            sldrAimPrediction.Size = new Size(238, 40);
-            sldrAimPrediction.TabIndex = 58;
-            sldrAimPrediction.Text = "Prediction %";
-            toolTip.SetToolTip(sldrAimPrediction, "Aimbot Smoothness");
-            sldrAimPrediction.UseAccentColor = true;
-            sldrAimPrediction.ValueMax = 100;
-            sldrAimPrediction.onValueChanged += sldrAimPrediction_onValueChanged;
-            // 
             // swAimClosest
             // 
             swAimClosest.Depth = 0;
@@ -1398,6 +1364,23 @@
             msSAEnableSilentAim.UseVisualStyleBackColor = true;
             msSAEnableSilentAim.CheckedChanged += msSAEnableSilentAim_CheckedChanged;
             // 
+            // swAimEnablePred
+            // 
+            swAimEnablePred.AutoSize = true;
+            swAimEnablePred.Depth = 0;
+            swAimEnablePred.Location = new Point(410, 446);
+            swAimEnablePred.Margin = new Padding(0);
+            swAimEnablePred.MouseLocation = new Point(-1, -1);
+            swAimEnablePred.MouseState = MaterialSkin.MouseState.HOVER;
+            swAimEnablePred.Name = "swAimEnablePred";
+            swAimEnablePred.Ripple = true;
+            swAimEnablePred.Size = new Size(181, 37);
+            swAimEnablePred.TabIndex = 62;
+            swAimEnablePred.Text = "Enable Prediction";
+            toolTip.SetToolTip(swAimEnablePred, "Enables Aimbot and SilentAim Prediction");
+            swAimEnablePred.UseVisualStyleBackColor = true;  
+            swAimEnablePred.CheckedChanged += swAimEnablePred_CheckedChanged;          
+            // 
             // sldrAimDistance
             // 
             sldrAimDistance.Depth = 0;
@@ -1410,7 +1393,7 @@
             sldrAimDistance.Size = new Size(238, 40);
             sldrAimDistance.TabIndex = 56;
             sldrAimDistance.Text = "Distance";
-            toolTip.SetToolTip(sldrAimDistance, "Aimbot Smoothness");
+            toolTip.SetToolTip(sldrAimDistance, "Aimbot Max Distance");
             sldrAimDistance.UseAccentColor = true;
             sldrAimDistance.Value = 300;
             sldrAimDistance.ValueMax = 1000;
@@ -8794,10 +8777,9 @@
             // materialCard2
             // 
             materialCard2.BackColor = Color.FromArgb(255, 255, 255);
+            materialCard2.Controls.Add(swAimEnablePred);
             materialCard2.Controls.Add(txtBonesInfo);
             materialCard2.Controls.Add(lblAimPrediction);
-            materialCard2.Controls.Add(sldrAimPing);
-            materialCard2.Controls.Add(sldrAimPrediction);
             materialCard2.Controls.Add(swAimClosest);
             materialCard2.Controls.Add(lblSAKeyBind);
             materialCard2.Controls.Add(lblAimbotKey);
@@ -8824,6 +8806,48 @@
             materialCard2.Padding = new Padding(14);
             materialCard2.Size = new Size(708, 612);
             materialCard2.TabIndex = 40;
+            // 
+            // txtBonesInfo
+            // 
+            txtBonesInfo.AllowPromptAsInput = true;
+            txtBonesInfo.AnimateReadOnly = false;
+            txtBonesInfo.AsciiOnly = false;
+            txtBonesInfo.BackgroundImageLayout = ImageLayout.None;
+            txtBonesInfo.BeepOnError = false;
+            txtBonesInfo.CutCopyMaskFormat = MaskFormat.IncludeLiterals;
+            txtBonesInfo.Depth = 0;
+            txtBonesInfo.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
+            txtBonesInfo.HidePromptOnLeave = false;
+            txtBonesInfo.HideSelection = true;
+            txtBonesInfo.InsertKeyMode = InsertKeyMode.Default;
+            txtBonesInfo.LeadingIcon = null;
+            txtBonesInfo.Location = new Point(290, 12);
+            txtBonesInfo.Mask = "";
+            txtBonesInfo.MaxLength = 32767;
+            txtBonesInfo.MouseState = MaterialSkin.MouseState.OUT;
+            txtBonesInfo.Name = "txtBonesInfo";
+            txtBonesInfo.PasswordChar = '\0';
+            txtBonesInfo.PrefixSuffixText = null;
+            txtBonesInfo.PromptChar = '_';
+            txtBonesInfo.ReadOnly = false;
+            txtBonesInfo.RejectInputOnFirstFailure = false;
+            txtBonesInfo.ResetOnPrompt = true;
+            txtBonesInfo.ResetOnSpace = true;
+            txtBonesInfo.RightToLeft = RightToLeft.No;
+            txtBonesInfo.SelectedText = "";
+            txtBonesInfo.SelectionLength = 0;
+            txtBonesInfo.SelectionStart = 0;
+            txtBonesInfo.ShortcutsEnabled = true;
+            txtBonesInfo.Size = new Size(358, 48);
+            txtBonesInfo.SkipLiterals = true;
+            txtBonesInfo.TabIndex = 61;
+            txtBonesInfo.TabStop = false;
+            txtBonesInfo.Text = "More bones = Less Performance";
+            txtBonesInfo.TextAlign = HorizontalAlignment.Center;
+            txtBonesInfo.TextMaskFormat = MaskFormat.IncludeLiterals;
+            txtBonesInfo.TrailingIcon = null;
+            txtBonesInfo.UseSystemPasswordChar = false;
+            txtBonesInfo.ValidatingType = null;
             // 
             // lblAimPrediction
             // 
@@ -8945,48 +8969,6 @@
             iconList.Images.SetKeyName(3, "watchlist.png");
             iconList.Images.SetKeyName(4, "loot.png");
             iconList.Images.SetKeyName(5, "mambo-icon.png");
-            // 
-            // txtBonesInfo
-            // 
-            txtBonesInfo.AllowPromptAsInput = true;
-            txtBonesInfo.AnimateReadOnly = false;
-            txtBonesInfo.AsciiOnly = false;
-            txtBonesInfo.BackgroundImageLayout = ImageLayout.None;
-            txtBonesInfo.BeepOnError = false;
-            txtBonesInfo.CutCopyMaskFormat = MaskFormat.IncludeLiterals;
-            txtBonesInfo.Depth = 0;
-            txtBonesInfo.Font = new Font("Microsoft Sans Serif", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
-            txtBonesInfo.HidePromptOnLeave = false;
-            txtBonesInfo.HideSelection = true;
-            txtBonesInfo.InsertKeyMode = InsertKeyMode.Default;
-            txtBonesInfo.LeadingIcon = null;
-            txtBonesInfo.Location = new Point(290, 12);
-            txtBonesInfo.Mask = "";
-            txtBonesInfo.MaxLength = 32767;
-            txtBonesInfo.MouseState = MaterialSkin.MouseState.OUT;
-            txtBonesInfo.Name = "txtBonesInfo";
-            txtBonesInfo.PasswordChar = '\0';
-            txtBonesInfo.PrefixSuffixText = null;
-            txtBonesInfo.PromptChar = '_';
-            txtBonesInfo.ReadOnly = false;
-            txtBonesInfo.RejectInputOnFirstFailure = false;
-            txtBonesInfo.ResetOnPrompt = true;
-            txtBonesInfo.ResetOnSpace = true;
-            txtBonesInfo.RightToLeft = RightToLeft.No;
-            txtBonesInfo.SelectedText = "";
-            txtBonesInfo.SelectionLength = 0;
-            txtBonesInfo.SelectionStart = 0;
-            txtBonesInfo.ShortcutsEnabled = true;
-            txtBonesInfo.Size = new Size(358, 48);
-            txtBonesInfo.SkipLiterals = true;
-            txtBonesInfo.TabIndex = 61;
-            txtBonesInfo.TabStop = false;
-            txtBonesInfo.Text = "More bones = Less Performance";
-            txtBonesInfo.TextAlign = HorizontalAlignment.Center;
-            txtBonesInfo.TextMaskFormat = MaskFormat.IncludeLiterals;
-            txtBonesInfo.TrailingIcon = null;
-            txtBonesInfo.UseSystemPasswordChar = false;
-            txtBonesInfo.ValidatingType = null;
             // 
             // frmMain
             // 
@@ -9258,8 +9240,6 @@
         private MaterialSkin.Controls.MaterialSwitch swStartWebServer;
         private MaterialSkin.Controls.MaterialCard materialCard2;
         private MaterialSkin.Controls.MaterialLabel lblAimPrediction;
-        private MaterialSkin.Controls.MaterialSlider sldrAimPing;
-        private MaterialSkin.Controls.MaterialSlider sldrAimPrediction;
         private MaterialSkin.Controls.MaterialSwitch swAimClosest;
         private MaterialSkin.Controls.MaterialLabel lblSAKeyBind;
         private MaterialSkin.Controls.MaterialLabel lblAimbotKey;
@@ -9640,6 +9620,7 @@
         private MaterialSkin.Controls.MaterialLabel lblSettingsColorsAIBoss;
         private MaterialSkin.Controls.MaterialLabel lblSettingsColorsAI;
         private MaterialSkin.Controls.MaterialMaskedTextBox txtBonesInfo;
+        private MaterialSkin.Controls.MaterialSwitch swAimEnablePred;
         //WebRadar             
     }
 }

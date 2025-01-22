@@ -897,8 +897,7 @@ namespace eft_dma_radar
             sldrAimbotFOV.Value = (int)this.config.AimbotFOV;
             sldrAimDistance.Value = (int)this.config.AimbotMaxDistance;
             msSAKeyBind.Text = ((Keys)this.config.SASilentAimKey).ToString();
-            sldrAimPrediction.Value =  (int)this.config.AimbotPredictionDelay;
-            sldrAimPing.Value =  (int)this.config.AimbotPing;
+
 
             // World
             mcSettingsMemoryWritingWorld.Enabled = this.config.MasterSwitch;
@@ -1281,6 +1280,14 @@ namespace eft_dma_radar
 
         }
 
+        private void swAimEnablePred_CheckedChanged(object sender, EventArgs e)
+        {
+            this.config.AimbotPrediction = swAimEnablePred.Checked;
+            Config.SaveConfig(this.config);
+            
+
+        }
+
         private void swAimClosest_CheckedChanged(object sender, EventArgs e)
         {
             this.config.AimbotClosest = swAimClosest.Checked;
@@ -1366,17 +1373,6 @@ namespace eft_dma_radar
         {
             this.config.AimbotMaxDistance = sldrAimDistance.Value;
             Config.SaveConfig(this.config);          
-        }
-        private void sldrAimPing_onValueChanged(object sender, int newValue)
-        {
-            this.config.AimbotPing = sldrAimPing.Value;  
-            Config.SaveConfig(this.config);         
-        }
-
-        private void sldrAimPrediction_onValueChanged(object sender, int newValue)
-        {
-            this.config.AimbotPredictionDelay = sldrAimPrediction.Value;
-            Config.SaveConfig(this.config);         
         }
       
         private void lblKeybind_MouseClick(object sender, MouseEventArgs e)

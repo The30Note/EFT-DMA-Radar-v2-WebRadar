@@ -283,17 +283,17 @@ namespace eft_dma_radar
                 Program.Log($"Bone failed transform.GetPosition, attempting to get new transform");
                 try
                 {
-                    this._transform = new Transform(this._pointer);
+                    this._transform  = new Transform(this._pointer);
                 }
                 catch { }
 
                 if (this._errors >= 5)
                 {
                     Program.Log("Too many bone failures, re-reading all bones.");
-                    this._errors = 0;  // Reset error counter after triggering re-read
-                    return false;  // Indicate failure to trigger bone re-read externally
+                    this._errors = 0;
+                    return false;
                 }
-        
+
                 return false;
             }
         }

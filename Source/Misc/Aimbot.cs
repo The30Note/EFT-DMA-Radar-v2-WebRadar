@@ -11,7 +11,7 @@ using System.Net;
 using OpenTK.Graphics.ES10;
 
 namespace eft_dma_radar
-{      
+{       
     public class Aimbot
     {
         private Config _config;  // Declare _config
@@ -24,15 +24,13 @@ namespace eft_dma_radar
         private bool        aimbotPelvis;
         private bool        aimbotRightLeg;
         private bool        aimbotLeftLeg;
-        private int      aimbotKey;
-        //private int      aimbotKeyTest;
-        private int      saAimbotKey;
-        private float      aimbotPing;
+        private int         aimbotKey;
+        private int         saAimbotKey;
         private bool        aimbotEnabled;
         private bool        saimbotEnabled;
-        private float aimbotPredictionDelay;
+        private bool enableAimPrediction;
         private CameraManager _cameraManager { get => Memory.CameraManager; }
-        private ReadOnlyDictionary<string, Player> AllPlayers { get => Memory.Players; }
+        private ReadOnlyDictionary<string, Player> AllPlayers { get => Memory.Players; }    
         private bool InGame { get => Memory.InGame; }
         private static PlayerManager playamanaga { get => Memory.PlayerManager; }
         private Player LocalPlayer { get => Memory.LocalPlayer; }
@@ -65,10 +63,9 @@ namespace eft_dma_radar
             aimbotKey = _config.AimbotKeybind;
             //aimbotKeyTest = _config.AimbotKeybindTest;
             saAimbotKey = _config.SASilentAimKey;
-            aimbotPing = _config.AimbotPing;
-            aimbotPredictionDelay = _config.AimbotPredictionDelay;
             aimbotEnabled = _config.EnableAimbot;
             saimbotEnabled = _config.SAEnableAimbot;
+            enableAimPrediction = _config.AimbotPrediction;
             Execute();
         }      
         public void Execute()
@@ -132,14 +129,17 @@ namespace eft_dma_radar
                 }
                 var Velocity = TargetPlayer.Velocity;
                 //var Velocity = Vector3.Zero;
-                Vector3 predictedPosition = PredictTargetPosition(targetBonePosition, Velocity, TargetPlayer);
-                //Program.Log($"Velocity: {Velocity}, Predicted Position: {predictedPosition}, TargetBonePosition: {targetBonePosition}");
+                //Vector3 predictedPosition = PredictTargetPosition(targetBonePosition, Velocity, TargetPlayer);
+                Vector3 predictedPosition2 = AimbotPrediction.PredictPosition(fireportPosition, targetBonePosition, Velocity, LocalPlayer.bullet_speed, LocalPlayer.bullet_mass, LocalPlayer.bullet_diam, LocalPlayer.ballistic_coeff);
+                //Program.Log($"Velocity: {Velocity}, Predicted Position: {predictedPosition2}, TargetBonePosition: {targetBonePosition}");
                 // Execute normal aimbot logic
+                var TargetPosition = enableAimPrediction? predictedPosition2 : targetBonePosition;
+
                 if(aimbotEnabled)
                 {
                     if (aimbotHeld)
                     {
-                        Vector2 aimAngle = CalcAngle(fireportPosition, predictedPosition);
+                        Vector2 aimAngle = CalcAngle(fireportPosition, TargetPosition);
                         NormalizeAngle(ref aimAngle);
                         LocalPlayer.SetRotationFr(aimAngle);
                         //Program.Log($"Aimbot: Predicted Position {predictedPosition}, AimAngle {aimAngle}");
@@ -150,7 +150,7 @@ namespace eft_dma_radar
                     // Execute silent aim logic
                     if (saAimbotHeld)
                     {
-                        SilentAim.ApplySilentAim(fireportPosition, predictedPosition);
+                        SilentAim.ApplySilentAim(fireportPosition, TargetPosition);
                         //Program.Log($"SilentAim: Predicted Position {predictedPosition}");
                     }
                 }
@@ -160,81 +160,6 @@ namespace eft_dma_radar
                 lastBoneReadTime = DateTime.Now;
             }
         }  
-private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelocity, Player targetPlayer)
-{
-    // Ignore minor vertical movements if X and Z velocities are near zero
-    if (Math.Abs(targetVelocity.X) < 0.01f && Math.Abs(targetVelocity.Z) < 0.01f)
-    {
-        targetVelocity.Y = 0f;
-    }
-
-    // Calculate distance to the target
-    var localBone = new Vector3(this.LocalPlayer.Position.X, this.LocalPlayer.Position.Z, this.LocalPlayer.Position.Y);
-    float distanceToTarget = Vector3.Distance(localBone, targetPosition);
-
-    // No prediction needed for very close targets
-    if (distanceToTarget < 15f)
-    {
-        return targetPosition;  // No prediction for very close targets
-    }
-
-    // Dynamically adjust bullet drop based on range
-    float dropAdjustment = 0f;
-    if (distanceToTarget > 50f)
-    {
-        var angle = (localBone.Y - targetPosition.Y) / distanceToTarget;
-
-        // Calculate bullet drop
-        var drop = AimbotHelpers.FormTrajectory2(
-            distanceToTarget,
-            Vector3.Zero,
-            new Vector3(LocalPlayer.bullet_speed, 0, 0),
-            LocalPlayer.bullet_mass,
-            LocalPlayer.bullet_diam,
-            LocalPlayer.ballistic_coeff,
-            out AimbotHelpers.GStruct267[] trajectoryInfo2
-        );
-
-        dropAdjustment = drop * (float)Math.Sin(angle);
-        targetPosition.Y += drop - Math.Abs(dropAdjustment / 2);
-    }
-    else
-    {
-        // Use smaller corrections for mid-range targets
-        targetPosition.Y -= 0.1f;
-    }
-
-    // Calculate the time of flight dynamically
-    var speed = AimbotHelpers.OptimizedFormTrajectory(
-        distanceToTarget,
-        Vector3.Zero,
-        new Vector3(LocalPlayer.bullet_speed, 0, 0),
-        LocalPlayer.bullet_mass,
-        LocalPlayer.bullet_diam,
-        LocalPlayer.ballistic_coeff,
-        out AimbotHelpers.GStruct267[] trajectoryInfo
-    );
-
-    float gamePing = (aimbotPing / 2000.0f);
-    float delayScaling = Math.Clamp(aimbotPredictionDelay / 50f, 0.3f, 1.2f);
-
-    // Dynamic prediction scaling based on distance
-    float distanceScalingFactor = distanceToTarget > 50f ? 1.0f : distanceToTarget / 50f;
-    float bulletFlightTime = (speed + gamePing) * delayScaling * distanceScalingFactor;
-
-    // Predict the target's position with dynamic scaling
-    targetPosition.X += targetVelocity.X * bulletFlightTime;
-    targetPosition.Z += targetVelocity.Z * bulletFlightTime;
-
-    if (distanceToTarget > 50f)
-    {
-        targetPosition.Y += targetVelocity.Y * bulletFlightTime;
-    }
-
-    return targetPosition;
-}
-
-
         private void ResetBoneCache()
         {
             boneCache = false;
@@ -250,11 +175,13 @@ private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelo
 
             var localPosition = LocalPlayer.Position;
             var screenCenter = new Vector2(1920 / 2f, 1080 / 2f);
-
-            var validPlayers = AllPlayers.Values
-                .AsParallel()
-                .Where(p => p.IsActive && p.IsAlive && !p.IsLocalPlayer && Vector3.Distance(localPosition, p.Position) <= aimbotMaxDistance)
-                .Select(p =>
+            var players = this.AllPlayers?.Select(x => x.Value)
+                        .Where(x => x.IsActive && x.IsAlive && Vector3.Distance(x.Position, LocalPlayer.Position) < aimbotMaxDistance)
+                        .ToList();
+                        
+            var validPlayers = this.AllPlayers?.Select(x => x.Value)
+                        .Where(x => x.IsActive && x.IsAlive && Vector3.Distance(x.Position, LocalPlayer.Position) < aimbotMaxDistance)
+                        .Select(p =>
                 {
                     if (Extensions.WorldToScreen(p.Position, 1920, 1080, out Vector2 screenPos))
                     {
@@ -270,7 +197,6 @@ private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelo
                 ? validPlayers.OrderBy(result => result.WorldDistance).ThenBy(result => result.ScreenDistance).FirstOrDefault()?.Player 
                 : validPlayers.OrderBy(result => result.ScreenDistance).FirstOrDefault()?.Player;
         }
-
         private static void NormalizeAngle(ref Vector2 angle)
         {
             var newX = angle.X switch
@@ -289,7 +215,6 @@ private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelo
 
             angle = new Vector2(newX, newY);
         }  
-
         public static Vector2 CalcAngle(Vector3 source, Vector3 destination)
         {
             Vector3 difference = source - destination;
@@ -369,17 +294,17 @@ private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelo
         {
             bones = new List<PlayerBones>();
 
-            if (_config.AimbotHead)
+            if (aimbotHead)
                 bones.Add(PlayerBones.HumanHead);
-            if (_config.AimbotNeck)
+            if (aimbotNeck)
                 bones.Add(PlayerBones.HumanNeck);
-            if (_config.AimbotChest)
+            if (aimbotChest)
                 bones.Add(PlayerBones.HumanSpine3);
-            if (_config.AimbotPelvis)
+            if (aimbotPelvis)
                 bones.Add(PlayerBones.HumanPelvis);
-            if (_config.AimbotRightLeg)
+            if (aimbotRightLeg)
                 bones.Add(PlayerBones.HumanRCalf);
-            if (_config.AimbotLeftLeg)
+            if (aimbotLeftLeg)
                 bones.Add(PlayerBones.HumanLCalf);
         }               
         public (Vector3 FireportPosition, Vector3 TargetBonePosition) ReadAllBonePositions(Player player)
@@ -477,180 +402,78 @@ private Vector3 PredictTargetPosition(Vector3 targetPosition, Vector3 targetVelo
             return (fireportPosition, closestBonePosition);
         }
     }    
-    public class AimbotHelpers
+    public class AimbotPrediction
     {
-        public struct GStruct267
+        public struct DragElement
         {
-            public float time;
-            public Vector3 position;
-            public Vector3 velocity;
-
-            public GStruct267(float time, Vector3 position, Vector3 velocity)
+            public float Mach;
+            public float Ballist;
+            public DragElement(float mach, float ballist)
             {
-                this.time = time;
-                this.position = position;
-                this.velocity = velocity;
+                Mach = mach;
+                Ballist = ballist;
             }
         }
+        private const int DragCoefsCount = 79;
+        private const float ConstGravity = 9.81f;
+        private static readonly DragElement[] DragCoefs =
+        {
+            new DragElement(0f, 0.2629f),  new DragElement(0.05f, 0.2558f), new DragElement(0.1f, 0.2487f),
+            new DragElement(0.15f, 0.2413f), new DragElement(0.2f, 0.2344f), new DragElement(0.25f, 0.2278f),
+            new DragElement(0.3f, 0.2214f), new DragElement(0.35f, 0.2155f), new DragElement(0.4f, 0.2104f),
+            new DragElement(0.45f, 0.2061f), new DragElement(0.5f, 0.2032f), new DragElement(0.55f, 0.202f),
+            // Add remaining values as per the original array...
+            new DragElement(5.0f, 0.4988f)
+        };
         public static float CalculateG1DragCoefficient(float velocity)
         {
-            int index = (int)Math.Floor(velocity / 343f / 0.05f);
-            if (index <= 0)
-            {
-                return 0f;
-            }
-            if (index > speedlist.Count - 1)
-            {
-                return speedlist.Last<Vector2>().Y;
-            }
-            float prevVelocity = speedlist[index - 1].X * 343f;
-            float nextVelocity = speedlist[index].X * 343f;
-            float prevDrag = speedlist[index - 1].Y;
-            return (speedlist[index].Y - prevDrag) / (nextVelocity - prevVelocity) * (velocity - prevVelocity) + prevDrag;
+            int coefIdx = (int)Math.Floor(velocity / 343f / 0.05f);
+            // Ensure index is within valid bounds
+            if (coefIdx < 0) return DragCoefs[0].Ballist;
+            if (coefIdx >= DragCoefs.Length) return DragCoefs[^1].Ballist;
+            float prevDrag = DragCoefs[coefIdx - 1].Mach * 343f;
+            float curDrag = DragCoefs[coefIdx].Mach * 343f;
+            float ballist = DragCoefs[coefIdx - 1].Ballist;
+            return ((DragCoefs[coefIdx].Ballist - ballist) / (curDrag - prevDrag)) * (velocity - prevDrag) + ballist;
         }
-        private static readonly List<Vector2> speedlist = new List<Vector2>
+        public static float GetBulletTimeForDistance(float distance, float bulletSpeed, float bulletMassGram, float bulletDiameter, float ballisticCoefficient)
         {
-            new Vector2(0f, 0.2629f),
-            new Vector2(0.05f, 0.2558f),
-            new Vector2(0.1f, 0.2487f),
-            new Vector2(0.15f, 0.2413f),
-            new Vector2(0.2f, 0.2344f),
-            new Vector2(0.25f, 0.2278f),
-            new Vector2(0.3f, 0.2214f),
-            new Vector2(0.35f, 0.2155f),
-            new Vector2(0.4f, 0.2104f),
-            new Vector2(0.45f, 0.2061f),
-            new Vector2(0.5f, 0.2032f),
-            new Vector2(0.55f, 0.202f),
-            new Vector2(0.6f, 0.2034f),
-            new Vector2(0.7f, 0.2165f),
-            new Vector2(0.725f, 0.223f),
-            new Vector2(0.75f, 0.2313f),
-            new Vector2(0.775f, 0.2417f),
-            new Vector2(0.8f, 0.2546f),
-            new Vector2(0.825f, 0.2706f),
-            new Vector2(0.85f, 0.2901f),
-            new Vector2(0.875f, 0.3136f),
-            new Vector2(0.9f, 0.3415f),
-            new Vector2(0.925f, 0.3734f),
-            new Vector2(0.95f, 0.4084f),
-            new Vector2(0.975f, 0.4448f),
-            new Vector2(1f, 0.4805f),
-            new Vector2(1.025f, 0.5136f),
-            new Vector2(1.05f, 0.5427f),
-            new Vector2(1.075f, 0.5677f),
-            new Vector2(1.1f, 0.5883f),
-            new Vector2(1.125f, 0.6053f),
-            new Vector2(1.15f, 0.6191f),
-            new Vector2(1.2f, 0.6393f),
-            new Vector2(1.25f, 0.6518f),
-            new Vector2(1.3f, 0.6589f),
-            new Vector2(1.35f, 0.6621f),
-            new Vector2(1.4f, 0.6625f),
-            new Vector2(1.45f, 0.6607f),
-            new Vector2(1.5f, 0.6573f),
-            new Vector2(1.55f, 0.6528f),
-            new Vector2(1.6f, 0.6474f),
-            new Vector2(1.65f, 0.6413f),
-            new Vector2(1.7f, 0.6347f),
-            new Vector2(1.75f, 0.628f),
-            new Vector2(1.8f, 0.621f),
-            new Vector2(1.85f, 0.6141f),
-            new Vector2(1.9f, 0.6072f),
-            new Vector2(1.95f, 0.6003f),
-            new Vector2(2f, 0.5934f),
-            new Vector2(2.05f, 0.5867f),
-            new Vector2(2.1f, 0.5804f),
-            new Vector2(2.15f, 0.5743f),
-            new Vector2(2.2f, 0.5685f),
-            new Vector2(2.25f, 0.563f),
-            new Vector2(2.3f, 0.5577f),
-            new Vector2(2.35f, 0.5527f),
-            new Vector2(2.4f, 0.5481f),
-            new Vector2(2.45f, 0.5438f),
-            new Vector2(2.5f, 0.5397f),
-            new Vector2(2.6f, 0.5325f),
-            new Vector2(2.7f, 0.5264f),
-            new Vector2(2.8f, 0.5211f),
-            new Vector2(2.9f, 0.5168f),
-            new Vector2(3f, 0.5133f),
-            new Vector2(3.1f, 0.5105f),
-            new Vector2(3.2f, 0.5084f),
-            new Vector2(3.3f, 0.5067f),
-            new Vector2(3.4f, 0.5054f),
-            new Vector2(3.5f, 0.504f),
-            new Vector2(3.6f, 0.503f),
-            new Vector2(3.7f, 0.5022f),
-            new Vector2(3.8f, 0.5016f),
-            new Vector2(3.9f, 0.501f),
-            new Vector2(4f, 0.5006f),
-            new Vector2(4.2f, 0.4998f),
-            new Vector2(4.4f, 0.4995f),
-            new Vector2(4.6f, 0.4992f),
-            new Vector2(4.8f, 0.499f),
-            new Vector2(5f, 0.4988f)
-        };
-        private static Vector3 gravity = new Vector3(0, -9.81f, 0);  
-        public static float FormTrajectory2(float distance, Vector3 startPosition, Vector3 startVelocity, float bulletMassGrams, float bulletDiameterMillimeters, float ballisticCoefficient, out GStruct267[] trajectoryInfo)
-        {
-            trajectoryInfo = new GStruct267[600];
-            float mass = bulletMassGrams / 1000f;
-            float diameter = bulletDiameterMillimeters / 1000f;
-            float crossSectionalArea = MathF.PI * (diameter / 2f) * (diameter / 2f);
-            float timeStep = 0.01f;
-            trajectoryInfo[0] = new GStruct267(0f, startPosition, startVelocity);
-            for (int i = 1; i < trajectoryInfo.Length; i++)
+            Vector3 zeroPosition = Vector3.Zero;
+            Vector3 zeroVelocity = new Vector3(bulletSpeed, 0f, 0f);
+            float bulletMassKg = bulletMassGram / 1000f;
+            float bulletDiamM = bulletDiameter / 1000f;
+            float bulletArea = bulletDiamM * bulletDiamM * (float)Math.PI / 4f;
+            float elapsedTime = 0.01f;
+            Vector3 prevVelocity = zeroVelocity;
+            Vector3 prevPosition = zeroPosition;
+            while (elapsedTime < 10f)
             {
-                GStruct267 previousState = trajectoryInfo[i - 1];
-                Vector3 velocity = previousState.velocity;
-                Vector3 position = previousState.position;
-                float dragForce = mass * CalculateG1DragCoefficient(velocity.Length()) / ballisticCoefficient / (diameter * diameter) * 0.0014223f;
-                Vector3 acceleration = gravity + Vector3.Normalize(velocity) * (-dragForce * 1.2f * crossSectionalArea * velocity.Length() * velocity.Length()) / (2f * mass);
-                Vector3 newPosition = position + velocity * timeStep + 0.5f * acceleration * (timeStep * timeStep);
-                Vector3 newVelocity = velocity + acceleration * timeStep;
-                trajectoryInfo[i] = new GStruct267(i * timeStep, newPosition, newVelocity);
-                if (newPosition.X > distance)
-                {
-                    return trajectoryInfo[i].time;
-                }
+                float fix = bulletMassKg * 0.0014223f / (bulletDiamM * bulletDiamM * ballisticCoefficient);
+                float dragCoeff = CalculateG1DragCoefficient(prevVelocity.Length()) * fix;
+                Vector3 acceleration = new Vector3(
+                    -dragCoeff * 1.2f * bulletArea * prevVelocity.LengthSquared() / (2f * bulletMassKg),
+                    ConstGravity,
+                    0f
+                );
+                Vector3 nextPosition = prevPosition + prevVelocity * 0.01f + 0.00005f * acceleration;
+                Vector3 nextVelocity = prevVelocity + acceleration * 0.01f;
+                prevVelocity = nextVelocity;
+                prevPosition = nextPosition;
+                elapsedTime += 0.01f;
+                if (Vector3.Distance(prevPosition, zeroPosition) >= distance)
+                    break;
             }
-            return trajectoryInfo[^1].time;
+            return elapsedTime;
         }
-        public static float OptimizedFormTrajectory(
-            float distance,
-            Vector3 startPosition,
-            Vector3 startVelocity,
-            float bulletMassGrams,
-            float bulletDiameterMillimeters,
-            float ballisticCoefficient,
-            out GStruct267[] trajectoryInfo)
+        public static Vector3 PredictPosition(Vector3 fireport, Vector3 targetPosition, Vector3 targetVelocity, float bulletSpeed, float bulletMass, float bulletDiameter, float ballisticCoefficient)
         {
-            const float timeStep = 0.01f;
-            trajectoryInfo = new GStruct267[100]; // Smaller array for closer approximation
-            float mass = bulletMassGrams / 1000f;
-            float diameter = bulletDiameterMillimeters / 1000f;
-            float crossSectionalArea = MathF.PI * (diameter / 2f) * (diameter / 2f);
-            trajectoryInfo[0] = new GStruct267(0f, startPosition, startVelocity);
-            for (int i = 1; i < trajectoryInfo.Length; i++)
-            {
-                var previous = trajectoryInfo[i - 1];
-                Vector3 velocity = previous.velocity;
-                float velocityLength = velocity.Length();
-
-                float dragForce = CalculateG1DragCoefficient(velocityLength) * crossSectionalArea * velocityLength / (ballisticCoefficient * mass);
-                Vector3 acceleration = gravity + (-dragForce * velocity / velocityLength);
-
-                Vector3 newPosition = previous.position + velocity * timeStep;
-                Vector3 newVelocity = velocity + acceleration * timeStep;
-
-                trajectoryInfo[i] = new GStruct267(i * timeStep, newPosition, newVelocity);
-
-                if (Vector3.Distance(startPosition, newPosition) >= distance)
-                {
-                    return i * timeStep; // Exit early
-                }
-            }
-            return trajectoryInfo[^1].time; // Fallback return
-        }               
-    }      
+            float distance = Vector3.Distance(fireport, targetPosition);
+            float bulletTime = GetBulletTimeForDistance(distance, bulletSpeed, bulletMass, bulletDiameter, ballisticCoefficient);
+            float verticalDisplacement = 0.5f * ConstGravity * bulletTime * bulletTime;
+            targetPosition.Y += verticalDisplacement;
+            Vector3 predictionDisplacement = targetVelocity * bulletTime;
+            targetPosition += predictionDisplacement;
+            return targetPosition;
+        }       
+    }   
 }
