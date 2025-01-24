@@ -4,6 +4,9 @@ using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Numerics;
+using Microsoft.AspNetCore.Identity;
+using Org.BouncyCastle.Asn1.Mozilla;
 
 namespace eft_dma_radar
 {
@@ -302,6 +305,204 @@ namespace eft_dma_radar
         {
             this._pointer = pointer;
             this._transform = new Transform(pointer);
+        }
+
+    }
+    public class Pos3
+    {
+        public float X { get; }
+        public float Y { get; }
+        public float Z { get; }
+
+        public Pos3(float x, float y, float z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+
+        public static implicit operator Pos3(Vector3 v)
+        {
+            return new Pos3(v.X, v.Y, v.Z);
+        }
+        public static implicit operator Vector3(Pos3 p)
+        {
+            return new Vector3(p.X, p.Y, p.Z);
+        }
+
+        public static Pos3 operator +(Pos3 a, Pos3 b)
+        {
+            return new Pos3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+        }
+
+        public static Pos3 operator +(Pos3 a, Vector3 b)
+        {
+            return new Pos3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+        }
+
+        public static Pos3 operator -(Pos3 a, Pos3 b)
+        {
+            return new Pos3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+        }
+
+        public static Pos3 operator -(Pos3 a, Vector3 b)
+        {
+            return new Pos3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+        }
+
+        public static Pos3 operator *(Pos3 a, float scalar)
+        {
+            return new Pos3(a.X * scalar, a.Y * scalar, a.Z * scalar);
+        }
+
+        public static Pos3 operator /(Pos3 a, float scalar)
+        {
+            return new Pos3(a.X / scalar, a.Y / scalar, a.Z / scalar);
+        }
+
+        public float Length()
+        {
+            return (float)Math.Sqrt(X * X + Y * Y + Z * Z);
+        }
+
+        // Returns the angle between two positions in degrees.
+        public static Angle2 CalcAngleDegrees(Pos3 from, Pos3 to)
+        {
+            Pos3 delta = from - to;
+            float length = delta.Length();
+
+            return new Angle2(
+                (float)-Math.Atan2(delta.X, -delta.Z),
+                (float)Math.Asin(delta.Y / length)
+            );
+        }
+
+        public static Angle2 CalcAngleRadians(Pos3 from, Pos3 to)
+        {
+            Angle2 angle = CalcAngleDegrees(from, to);
+            angle.ToRadians();
+            return angle;
+        }
+
+        public override string ToString()
+        {
+            return $"Pos3({X}, {Y}, {Z})";
+        }
+    }
+
+    public class Angle2
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+
+        public Angle2(float x, float y)
+        {
+            X = x;
+            Y = y;
+        }
+        public Angle2(Vector2 vec2)
+        {
+            X = vec2.X;
+            Y = vec2.Y;
+        }
+        
+        public static Angle2 Zero => new Angle2(0, 0);
+
+        public static implicit operator Angle2(Vector2 vec2)
+        {
+            return new Angle2(vec2);
+        }
+
+        public static implicit operator Vector2(Angle2 angle)
+        {
+            return new Vector2(angle.X, angle.Y);
+        }
+
+        public static Angle2 operator +(Angle2 angle1, Angle2 angle2)
+        {
+            float resultX = angle1.X + angle2.X;
+            float resultY = angle1.Y + angle2.Y;
+            return new Angle2(resultX, resultY);
+        }
+
+        public static Angle2 operator -(Angle2 angle1, Angle2 angle2)
+        {
+            float resultX = angle1.X - angle2.X;
+            float resultY = angle1.Y - angle2.Y;
+            return new Angle2(resultX, resultY);
+        }
+
+        public static Angle2 operator *(Angle2 angle, float scalar)
+        {
+            float resultX = angle.X * scalar;
+            float resultY = angle.Y * scalar;
+            return new Angle2(resultX, resultY);
+        }
+        public static Angle2 operator *(Angle2 angle, double scalar)
+        {
+            float resultX = angle.X * (float)scalar;
+            float resultY = angle.Y * (float)scalar;
+            return new Angle2(resultX, resultY);
+        }
+
+        public static Angle2 operator /(Angle2 angle, float scalar)
+        {
+            float resultX = angle.X / scalar;
+            float resultY = angle.Y / scalar;
+            return new Angle2(resultX, resultY);
+        }
+
+        public static bool operator ==(Angle2 angle1, Angle2 angle2)
+        {
+            if (ReferenceEquals(angle1, angle2))
+                return true;
+            if (angle1 is null || angle2 is null)
+                return false;
+            return angle1.X == angle2.X && angle1.Y == angle2.Y;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public static bool operator !=(Angle2 angle1, Angle2 angle2)
+        {
+            return !(angle1 == angle2);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Angle2 angle)
+                return this == angle;
+            return false;
+        }
+
+        public void ToRadians()
+        {
+            X *= (float)(Math.PI / 180);
+            Y *= (float)(Math.PI / 180);
+        }
+
+        public void ToDegrees()
+        {
+            X *= (float)(180 / Math.PI);
+            Y *= (float)(180 / Math.PI);
+        }
+
+        public void NormalizeRadians()
+        {
+            while (X > Math.PI) X -= (float)(2 * Math.PI);
+            while (X < -Math.PI) X += (float)(2 * Math.PI);
+            while (Y > Math.PI) Y -= (float)(2 * Math.PI);
+            while (Y < -Math.PI) Y += (float)(2 * Math.PI);
+        }
+        public void NormalizeDegrees()
+        {
+            while (X > 180.0f) X -= 360.0f;
+            while (X < -180.0f) X += 360.0f;
+            while (Y > 180.0f) Y -= 360.0f;
+            while (Y < -180.0f) Y += 360.0f;
         }
     }
     #endregion

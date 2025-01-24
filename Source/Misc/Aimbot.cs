@@ -10,6 +10,7 @@ using static Vmmsharp.VmmProcess;
 using System.Net;
 using OpenTK.Graphics.ES10;
 
+
 namespace eft_dma_radar
 {       
     public class Aimbot
@@ -92,13 +93,6 @@ namespace eft_dma_radar
                 Memory.CameraManager.UpdateViewMatrix();
                 TargetPlayer = GetTargetPlayerOptimized();
 
-                // Validate the target player
-                if (TargetPlayer == null || !TargetPlayer.IsAlive)
-                {
-                    //Program.Log("No valid target found or target is dead.");
-                    return;
-                }
-
                 // Read positions and velocities
                 var targetBonePosition = ReadAllBonePositions(TargetPlayer);
                 var FirePos = localPlayer.fireportPosition;
@@ -106,11 +100,10 @@ namespace eft_dma_radar
                 // Validate positions
                 if (FirePos == Vector3.Zero || targetBonePosition == Vector3.Zero)
                 {
-                    //Program.Log("Failed to retrieve valid positions for target.");
                     return;
                 }
 
-                Vector3 targetPosition;
+                Pos3 targetPosition;
                 if (enableAimPrediction)
                 {
                     targetPosition = AimbotPrediction.PredictPosition(FirePos, targetBonePosition, TargetPlayer.Velocity, localPlayer.bullet_speed, localPlayer.bullet_mass, localPlayer.bullet_diam, localPlayer.ballistic_coeff);
@@ -120,21 +113,21 @@ namespace eft_dma_radar
                     targetPosition = targetBonePosition;
                 }
 
-                Vector2 aimAngle = CalcAngle(FirePos, targetPosition);
+                Angle2 aimAngle = Pos3.CalcAngleDegrees(FirePos, targetPosition);
+                aimAngle.NormalizeDegrees();
 
                 if (aimbotEnabled)
                 {
                     if (aimbotHeld)
                     {
-                        NormalizeAngle(ref aimAngle);
-                        localPlayer.SetRotationFr(aimAngle);
+                        localPlayer.SetRotation(aimAngle);
                     }                 
                 }
                 if(saimbotEnabled)
                 {
                     if (saAimbotHeld)
                     {
-                        ApplySilentAim(FirePos);
+                        ApplySilentAim(aimAngle);
                     }
                 }
 
@@ -180,57 +173,26 @@ namespace eft_dma_radar
                 ? validPlayers.OrderBy(result => result.WorldDistance).ThenBy(result => result.ScreenDistance).FirstOrDefault()?.Player 
                 : validPlayers.OrderBy(result => result.ScreenDistance).FirstOrDefault()?.Player;
         }
-        private static void NormalizeAngle(ref Vector2 angle)
-        {
-            NormalizeAngle(ref angle.X);
-            NormalizeAngle(ref angle.Y);
 
-        }
-
-        private static void NormalizeAngle(ref float angle)
-        {
-            while (angle > 180.0f) angle -= 360.0f;
-            while (angle < -180.0f) angle += 360.0f;
-        }
-        public static Vector2 CalcAngle(Vector3 from, Vector3 to)
-        {
-            Vector3 delta = from - to;
-            float length = delta.Length();
-
-            return new Vector2(
-                RadToDeg((float)-Math.Atan2(delta.X, -delta.Z)),
-                RadToDeg((float)Math.Asin(delta.Y / length))
-            );
-        }
-
-        private static float DegToRad(float degrees)
-        {
-            return degrees * ((float)Math.PI / 180.0f);
-        }
-
-        private static float RadToDeg(float radians)
-        {
-            return radians * (180.0f / (float)Math.PI);
-        }
-
-        private static void ApplySilentAim(Vector2 aimAngle)
+        private static void ApplySilentAim(Angle2 aimAngle)
         {
             // Read current view angles
-            Vector2 viewAngles = Memory.ReadValue<Vector2>(playerManager._movementContext + 0x27C);
+            Angle2 viewAngles = Memory.ReadValue<Vector2>(playerManager._movementContext + 0x27C);
 
             // Normalize delta
-            Vector2 delta = aimAngle - viewAngles;
-            NormalizeAngle(ref delta);
+            Angle2 delta = aimAngle - viewAngles;
+            delta.ToRadians();
+            delta.NormalizeRadians();
 
             // Compute gun angle
             Vector3 gunAngle = new Vector3(
-                DegToRad(delta.X) / 1.5f,
-                0.0f,
-                DegToRad(delta.Y) / 1.5f
+                delta.X / 1.5f,
+                -1.0f,
+                -delta.Y / 1.5f
             );
 
             // Write the new gun angles to memory
-            Memory.WriteValue(playerManager._proceduralWeaponAnimation + 0x22C, new Vector3(gunAngle.X, -1.0f, gunAngle.Z * -1.0f));
+            Memory.WriteValue(playerManager._proceduralWeaponAnimation + 0x22C, gunAngle);
         }
 
         private List<PlayerBones> bones;

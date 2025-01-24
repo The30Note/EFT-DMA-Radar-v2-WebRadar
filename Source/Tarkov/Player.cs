@@ -407,21 +407,21 @@ namespace eft_dma_radar
             }
         }
 
-        public void SetRotationFr(Vector2 brainrot)
+        public void SetRotation(Angle2 angle)
         {
             if (!this.IsLocalPlayer || !this.IsAlive || this.MovementContext == 0)
             {
                 return;
 
             }
-            Memory.WriteValue<Vector2>(this.MovementContext + Offsets.MovementContext._Rotation, brainrot);
+            Memory.WriteValue<Vector2>(this.MovementContext + Offsets.MovementContext._Rotation, angle);
         }
 
-        public Vector2 GetRotationFr()
+        public Angle2 GetRotation()
         {
             if (!this.IsLocalPlayer || !this.IsAlive || this.MovementContext == 0)
             {
-                return new Vector2();
+                return new Angle2(0,0);
             }
 
             return Memory.ReadValue<Vector2>(this.isOfflinePlayer ? this.MovementContext + Offsets.MovementContext.Rotation : this.MovementContext + Offsets.ObservedPlayerMovementContext.Rotation);

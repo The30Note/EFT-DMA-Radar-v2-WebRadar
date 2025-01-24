@@ -400,10 +400,10 @@ namespace eft_dma_radar
                     }
                     else
                     {
-                        var rotation = scatterMap.Results[i][0].TryGetResult<Vector2>(out var rot);
-                        var p2 = player.SetRotation(rot);
-                        var p3 = true;
-        
+                        var rotation = scatterMap.Results[i][0].TryGetResult<Vector2>(out Vector2 rot);
+                        //var p2 = player.SetRotation(rot); //What the fuck is this?
+                        //var p3 = true;
+
                         if (checkHealth && !player.IsLocalPlayer)
                             if (scatterMap.Results[i][6].TryGetResult<int>(out var hp))
                                 player.SetHealth(hp);
@@ -451,9 +451,9 @@ namespace eft_dma_radar
                             catch { }
                         }
         
-                        if (p2 && p3)
-                            player.ErrorCount = 0;
-                        else
+                        //if (p2 && p3)
+                        //    player.ErrorCount = 0; // See above comment
+                        //else
                             player.ErrorCount++;
                     }
                 }
