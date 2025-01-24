@@ -134,7 +134,7 @@ namespace eft_dma_radar
                 {
                     if (saAimbotHeld)
                     {
-                        ApplySilentAim(FirePos);
+                        ApplySilentAim(aimAngle);
                     }
                 }
 
