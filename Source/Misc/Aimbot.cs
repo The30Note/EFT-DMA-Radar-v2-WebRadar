@@ -119,18 +119,17 @@ namespace eft_dma_radar
                 }
 
                 // Read positions and velocities
-                var (fireportPosition, targetBonePosition) = ReadAllBonePositions(TargetPlayer);
+                var targetBonePosition = ReadAllBonePositions(TargetPlayer);
+                var FirePos = LocalPlayer.fireportPosition;
 
                 // Validate positions
-                if (fireportPosition == Vector3.Zero || targetBonePosition == Vector3.Zero)
+                if (FirePos == Vector3.Zero || targetBonePosition == Vector3.Zero)
                 {
                     //Program.Log("Failed to retrieve valid positions for target.");
                     return;
                 }
                 var Velocity = TargetPlayer.Velocity;
-                //var Velocity = Vector3.Zero;
-                //Vector3 predictedPosition = PredictTargetPosition(targetBonePosition, Velocity, TargetPlayer);
-                Vector3 predictedPosition2 = AimbotPrediction.PredictPosition(fireportPosition, targetBonePosition, Velocity, LocalPlayer.bullet_speed, LocalPlayer.bullet_mass, LocalPlayer.bullet_diam, LocalPlayer.ballistic_coeff);
+                Vector3 predictedPosition2 = AimbotPrediction.PredictPosition(FirePos, targetBonePosition, Velocity, LocalPlayer.bullet_speed, LocalPlayer.bullet_mass, LocalPlayer.bullet_diam, LocalPlayer.ballistic_coeff);
                 //Program.Log($"Velocity: {Velocity}, Predicted Position: {predictedPosition2}, TargetBonePosition: {targetBonePosition}");
                 // Execute normal aimbot logic
                 var TargetPosition = enableAimPrediction? predictedPosition2 : targetBonePosition;
@@ -139,7 +138,7 @@ namespace eft_dma_radar
                 {
                     if (aimbotHeld)
                     {
-                        Vector2 aimAngle = CalcAngle(fireportPosition, TargetPosition);
+                        Vector2 aimAngle = CalcAngle(FirePos, TargetPosition);
                         NormalizeAngle(ref aimAngle);
                         LocalPlayer.SetRotationFr(aimAngle);
                         //Program.Log($"Aimbot: Predicted Position {predictedPosition}, AimAngle {aimAngle}");
@@ -150,7 +149,7 @@ namespace eft_dma_radar
                     // Execute silent aim logic
                     if (saAimbotHeld)
                     {
-                        SilentAim.ApplySilentAim(fireportPosition, TargetPosition);
+                        SilentAim.ApplySilentAim(FirePos, TargetPosition);
                         //Program.Log($"SilentAim: Predicted Position {predictedPosition}");
                     }
                 }
@@ -307,13 +306,13 @@ namespace eft_dma_radar
             if (aimbotLeftLeg)
                 bones.Add(PlayerBones.HumanLCalf);
         }               
-        public (Vector3 FireportPosition, Vector3 TargetBonePosition) ReadAllBonePositions(Player player)
+        public Vector3 ReadAllBonePositions(Player player)
         {
             if (player == null || player.Name == "???" || !player.IsAlive)
             {
                 //Program.Log("Skipping invalid or dead player. Clearing target.");
                 TargetPlayer = null; // Clear the target
-                return (Vector3.Zero, Vector3.Zero);
+                return (Vector3.Zero);
             }
             InitializeBonesFromConfig();
             // Reset bone cache
@@ -334,15 +333,6 @@ namespace eft_dma_radar
                     var basePtr = baseReadRound.AddEntry<MemPointer>(i, 0, boneMatrix, null, 0x20 + ((uint)bones[i] * 0x8));
                     derefReadRound.AddEntry<MemPointer>(i, 1, basePtr, null, 0x10);
                 }
-                // Add scatter read for Fireport
-                var firearmControllerPtr = baseReadRound.AddEntry<MemPointer>(bones.Count, 0, playamanaga._proceduralWeaponAnimation, null, ProceduralWeaponAnimation.FirearmContoller);
-                var fireportPtr = derefReadRound.AddEntry<MemPointer>(bones.Count, 1, firearmControllerPtr, null, FirearmController.Fireport);
-                // Add scatter read for offline velocity
-                var offlineCharacterControllerPtr = baseReadRound.AddEntry<MemPointer>(bones.Count + 1, 0, player.Base, null, 0x40);
-                derefReadRound.AddEntry<Vector3>(bones.Count + 1, 1, offlineCharacterControllerPtr, null, 0xEC);
-                // Add scatter read for online velocity
-                derefReadRound.AddEntry<Vector3>(bones.Count + 2, 0, player.MovementContext, null, 0x10C);
-                // Execute the scatter map reads
                 boneScatterMap.Execute();
                 // Populate bone transforms
                 for (int i = 0; i < bones.Count; i++)
@@ -356,18 +346,6 @@ namespace eft_dma_radar
                         }
                     }
                 }
-            }
-            // Retrieve the Fireport position
-            Vector3 fireportPosition = Vector3.Zero;
-            if (boneScatterMap.Results[bones.Count][1].TryGetResult<MemPointer>(out var fireportPointer))
-            {
-                ulong handsContainer = Memory.ReadPtrChain(fireportPointer, new uint[] { Fireport.To_TransfromInternal[0], Fireport.To_TransfromInternal[1] });
-                Transform fireportTransform = new Transform(handsContainer);
-                fireportPosition = fireportTransform.GetPosition();
-            }
-            else
-            {
-                Program.Log("Failed to retrieve Fireport position.");
             }
             // Retrieve the target bone position (using the first bone in the list as an example)
             Vector3 targetBonePosition = Vector3.Zero;
@@ -399,7 +377,7 @@ namespace eft_dma_radar
                     }
                 }
             }
-            return (fireportPosition, closestBonePosition);
+            return (closestBonePosition);
         }
     }    
     public class AimbotPrediction

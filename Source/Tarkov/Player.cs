@@ -64,6 +64,8 @@ namespace eft_dma_radar
         public float bullet_diam { get; set; }
         public float bullet_velocity { get; set; }        
         public ulong CharacterController { get; set; }
+        public ulong FireportPtr { get; set; }
+        public Vector3 fireportPosition { get; set; }
         /// <summary>
         /// Player's current health (sum of all 7 body parts).
         /// </summary>
@@ -138,6 +140,7 @@ namespace eft_dma_radar
         public static List<PlayerBones> RequiredBones { get; } = new List<PlayerBones>
         {
             PlayerBones.HumanHead,
+            PlayerBones.HumanNeck,
             PlayerBones.HumanSpine3,
             PlayerBones.HumanLPalm,
             PlayerBones.HumanRPalm,
@@ -490,6 +493,44 @@ namespace eft_dma_radar
                 return false;
             }
         }
+        public bool SetFireArmPos()
+        {
+            try
+            {
+                if (!this.IsLocalPlayer)
+                {
+                    Program.Log($"Skipping firearm position update for non-local player '{this.Name}'");
+                    return false;
+                }
+        
+                if (this.FireportPtr == 0)
+                {
+                    throw new InvalidOperationException($"FireportPosition is invalid for Player '{this.Name}'.");
+                }
+        
+                // Extract the position using Transform class
+                ulong handsContainer = Memory.ReadPtrChain(FireportPtr, new uint[] { Fireport.To_TransfromInternal[0], Fireport.To_TransfromInternal[1] });
+                Transform fireportTransform = new Transform(handsContainer);
+                fireportPosition = fireportTransform.GetPosition();
+        
+                if (fireportPosition == Vector3.Zero)
+                {
+                    Program.Log($"ERROR: Fireport position is zero for Player '{this.Name}'");
+                    return false;
+                }
+        
+                //Program.Log($"Set Firearm Position for '{this.Name}' to X:{fireportPosition.X}, Y:{fireportPosition.Y}, Z:{fireportPosition.Z}");
+        
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"ERROR setting FireportPosition for Player '{this.Name}': {ex}");
+                return false;
+            }
+        }
+
+            
         public void UpdateItemInHands()
         {
             this.ItemInHands = this.GearManager.ActiveWeapon;
@@ -632,6 +673,11 @@ namespace eft_dma_radar
 
             // Add Velocity scatter read from CharacterController
             var velocity = round2.AddEntry<Vector3>(0, 20, characterController, null, Offsets.CharacterController.Velocity);
+            var pwd = round2.AddEntry<ulong>(0, 21, this.Base, null, Offsets.Player.ProceduralWeaponAnimation);
+            var firearmContoller = round3.AddEntry<ulong>(0, 22, pwd, null, Offsets.ProceduralWeaponAnimation.FirearmController);
+            var firePortptr = round4.AddEntry<ulong>(0, 23, firearmContoller, null, Offsets.FirearmController.Fireport);
+            var firePort1 = round5.AddEntry<ulong>(0, 24, firePortptr, null,  Offsets.Fireport.To_TransfromInternal[0]);
+            var fireportPosition = round6.AddEntry<ulong>(0, 25, firePortptr, null,  Offsets.Fireport.To_TransfromInternal[1]);
 
             scatterReadMap.Execute();
         }
@@ -660,11 +706,14 @@ namespace eft_dma_radar
                 return;            
             if (!scatterReadMap.Results[0][19].TryGetResult<ulong>(out var characterController))
                 return;    
+            if (!scatterReadMap.Results[0][23].TryGetResult<ulong>(out var firePortptr))
+                return;
 
             this.Info = info;
             this.PlayerRole = role;
             this.HealthController = healthController;
             this.CharacterController = characterController;
+            this.FireportPtr = firePortptr;
             if (scatterReadMap.Results[0][20].TryGetResult<Vector3>(out var velocity))
             {
                 this.Velocity = velocity;

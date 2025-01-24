@@ -291,7 +291,7 @@
         public const uint MotionReact = 0x40; // [0x40] MotionReact : -.MotionEffector
         public const uint ForceReact = 0x48; // [0x48] ForceReact : -.ForceEffector
         public const uint Shooting = 0x50; // [0x50] Shootingg : -.ShotEffector
-        public const uint FirearmContoller = 0xB0; // [0xB0] _firearmController : -.Player.FirearmController
+        public const uint FirearmController = 0xB0; // [0xB0] _firearmController : -.Player.FirearmController
         public const uint Mask = 0x140; // [0x140] Mask : System.Int32
         public const uint IsAiming = 0x1C5; // [0x1C5] _isAiming : Boolean
         public const uint AimingSpeed = 0x1E4; // [0x1E4] _aimingSpeed : Single

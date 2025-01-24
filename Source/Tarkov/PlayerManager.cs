@@ -520,7 +520,7 @@ namespace eft_dma_radar
             var isADSPtr = round1.AddEntry<bool>(0, 3, this._proceduralWeaponAnimation, null, Offsets.ProceduralWeaponAnimation.IsAiming);
             var aimingSpeedPtr = round1.AddEntry<float>(0, 4, this._proceduralWeaponAnimation, null, Offsets.ProceduralWeaponAnimation.AimingSpeed);
             var maskPtr = round1.AddEntry<int>(0, 5, this._proceduralWeaponAnimation, null, Offsets.ProceduralWeaponAnimation.Mask);
-            var firearmControllerPtr = round1.AddEntry<ulong>(0, 6, this._proceduralWeaponAnimation, null, Offsets.ProceduralWeaponAnimation.FirearmContoller);
+            var firearmControllerPtr = round1.AddEntry<ulong>(0, 6, this._proceduralWeaponAnimation, null, Offsets.ProceduralWeaponAnimation.FirearmController);
             var handsControllerPtr = round1.AddEntry<ulong>(0, 7, this._playerBase, null, Offsets.Player.HandsController);
             var overweightPtr = round1.AddEntry<float>(0, 8, this._physical, null, Offsets.Physical.Overweight);
             var breathIntensityPtr = round1.AddEntry<float>(0, 9, this._breathEffector, null, Offsets.BreathEffector.Intensity);
