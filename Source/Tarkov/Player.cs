@@ -457,7 +457,7 @@ namespace eft_dma_radar
         /// <summary>
         /// Set player rotation (Direction/Pitch)
         /// </summary>
-        public bool SetRotation(object obj)
+        public bool TrySetRotation(object obj)
         {
             try
             {
